@@ -32,6 +32,17 @@ export default function App() {
   const [result, setResult] = useState<SongResult | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<CategoryItem | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
+
+  useEffect(() => {
+    if (hoveredItem) {
+      const timer = setTimeout(() => {
+        setHoveredItem(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [hoveredItem]);
 
   const toggleSelection = (id: string, category: 'genre' | 'mood' | 'theme') => {
     const setters = {
@@ -185,8 +196,8 @@ export default function App() {
           Compose Your Atmosphere
         </p>
         <p className="max-w-2xl mx-auto text-gray-400 leading-relaxed">
-          소리드로우 스튜디오가 당신의 이야기를 음악으로 만들어드립니다.<br />
-          장르, 분위기, 주제를 선택하여 당신만의 감성적인 곡을 작곡해보세요.
+          '당신의 이야기를 음악으로'<br />
+          키워드를 선택하여 세상에 단 하나 뿐인 당신만의 감성적인 곡을 만들어보세요.
         </p>
       </header>
 
@@ -222,17 +233,41 @@ export default function App() {
         {/* Search & Actions */}
         <div className="space-y-6">
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
               <Search className="w-5 h-5 text-gray-400 group-focus-within:text-brand-orange transition-colors" />
             </div>
+            
             <input
               type="text"
-              placeholder="당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움)"
               value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
+              onChange={(e) => {
+                setUserInput(e.target.value);
+                if (e.target.value) setShowGuide(false);
+              }}
+              onFocus={() => {
+                setIsInputFocused(true);
+                setShowGuide(false);
+              }}
+              onBlur={() => setIsInputFocused(false)}
               className="w-full bg-zinc-600/40 border border-white/20 rounded-2xl py-5 pl-12 pr-32 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all text-lg"
             />
-            <div className="absolute inset-y-2 right-2 flex items-center gap-2">
+
+            {/* Mobile/Desktop Guide Overlay */}
+            {showGuide && !userInput && !isInputFocused && (
+              <div 
+                onClick={() => {
+                  setIsInputFocused(true);
+                  setShowGuide(false);
+                }}
+                className="absolute inset-0 left-12 right-32 flex items-center cursor-text overflow-x-auto custom-scrollbar-hidden"
+              >
+                <div className="whitespace-nowrap text-gray-400 text-lg pr-4 animate-scroll-hint md:animate-none">
+                  당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움)
+                </div>
+              </div>
+            )}
+
+            <div className="absolute inset-y-2 right-2 flex items-center gap-2 z-10">
               <button
                 onClick={applyRandom}
                 title="랜덤 선택"
@@ -451,6 +486,20 @@ export default function App() {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 130, 0, 0.3);
+        }
+        .custom-scrollbar-hidden::-webkit-scrollbar {
+          display: none;
+        }
+        .custom-scrollbar-hidden {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        @keyframes scroll-hint {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(-10px); }
+        }
+        .animate-scroll-hint {
+          animation: scroll-hint 3s ease-in-out infinite;
         }
       `}</style>
     </div>
