@@ -37,6 +37,7 @@ export async function generateSong(
     - Structure: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Chorus], [Outro]
     - Length: Adjust the lyrics length based on the tempo, genre, and mood of the song to ensure it fits within the target duration (2:30 to 3:00 minutes).
     - Provide both English and Korean versions.
+    - CRITICAL: When providing Korean titles and lyrics, do NOT translate English literally. Instead, capture the lyrical and poetic essence of the song to make it feel natural, emotionally resonant, and beautiful in Korean. The Korean lyrics should read like a standalone poem or song.
     
     Rules for Prompt:
     - Use one of the provided base prompts as a reference and modify it to fit the selected keywords.

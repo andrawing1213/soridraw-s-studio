@@ -22,12 +22,14 @@ export const GENRES: CategoryItem[] = [
   { id: 'house', label: 'House', description: '반복적인 4/4 비트와 전자적 질감의 음악입니다.' },
   { id: 'blues', label: 'Blues', description: '블루스 스케일과 코드를 기반으로 한 감정 표현 음악입니다.' },
   { id: 'rap', label: 'Rap', description: '강렬한 비트 위에 리드미컬한 가사 전달이 특징인 음악입니다.' },
+  { id: 'techno', label: 'Techno', description: '반복적인 비트와 전자적인 사운드가 특징인 테크노 음악입니다.' },
+  { id: 'kpop', label: 'K-Pop', description: '한국의 대중음악으로, 다양한 장르가 혼합된 세련된 사운드입니다.' },
 ];
 
 export const MOODS: CategoryItem[] = [
   { id: 'quiet', label: '조용한', description: '차분하고 부드러운 분위기입니다.' },
   { id: 'peaceful', label: '평온한', description: '고요하고 평화로운 느낌을 줍니다.' },
-  { id: 'popping', label: '톡톡튀는', description: '생동감 넘치고 톡톡 튀는 무드입니다.' },
+  { id: 'popping', label: '통통튀는', description: '생동감 넘치고 통통 튀는 무드입니다.' },
   { id: 'groovy', label: '그루비', description: '리드미컬하고 춤추고 싶은 바이브입니다.' },
   { id: 'addictive', label: '중독성', description: '귀에 쏙 들어오고 기억에 남는 사운드입니다.' },
   { id: 'dreamy', label: '몽환적', description: '초현실적이고 신비로운 분위기입니다.' },
@@ -47,6 +49,8 @@ export const MOODS: CategoryItem[] = [
   { id: 'workout', label: '운동', description: '활력을 불어넣어주는 에너지 넘치는 사운드입니다.' },
   { id: 'walk', label: '산책', description: '가볍게 걸으며 듣기 좋은 편안한 리듬입니다.' },
   { id: 'relaxed-mood', label: '여유로운', description: '긴장을 풀고 편안하게 즐길 수 있는 무드입니다.' },
+  { id: 'cheerful', label: '경쾌한', description: '가볍고 즐거운 리듬의 경쾌한 분위기입니다.' },
+  { id: 'nature-sounds', label: '자연소리', description: '새소리, 물소리 등 자연의 소리가 어우러진 평온한 무드입니다.' },
 ];
 
 export const THEMES: CategoryItem[] = [
