@@ -32,7 +32,6 @@ export default function App() {
   const [result, setResult] = useState<SongResult | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<CategoryItem | null>(null);
-  const [touchTimeout, setTouchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const toggleSelection = (id: string, category: 'genre' | 'mood' | 'theme') => {
     const setters = {
@@ -166,25 +165,6 @@ export default function App() {
     setTimeout(() => setCopiedType(null), 2000);
   };
 
-  const handleTouchStart = (item: CategoryItem) => {
-    const timeout = setTimeout(() => {
-      setHoveredItem(item);
-    }, 300);
-    setTouchTimeout(timeout);
-  };
-
-  const handleTouchEnd = (id: string, category: 'genre' | 'mood' | 'theme') => {
-    if (touchTimeout) {
-      clearTimeout(touchTimeout);
-      setTouchTimeout(null);
-    }
-    if (hoveredItem) {
-      setHoveredItem(null);
-    } else {
-      toggleSelection(id, category);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-sans selection:bg-brand-orange/30">
       {/* Header */}
@@ -220,8 +200,6 @@ export default function App() {
             onToggle={(id) => toggleSelection(id, 'genre')}
             onClear={() => clearCategory('genre')}
             onHover={setHoveredItem}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={(id) => handleTouchEnd(id, 'genre')}
           />
           <CategorySection 
             title="분위기" 
@@ -230,8 +208,6 @@ export default function App() {
             onToggle={(id) => toggleSelection(id, 'mood')}
             onClear={() => clearCategory('mood')}
             onHover={setHoveredItem}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={(id) => handleTouchEnd(id, 'mood')}
           />
           <CategorySection 
             title="주제" 
@@ -240,8 +216,6 @@ export default function App() {
             onToggle={(id) => toggleSelection(id, 'theme')}
             onClear={() => clearCategory('theme')}
             onHover={setHoveredItem}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={(id) => handleTouchEnd(id, 'theme')}
           />
         </div>
 
@@ -401,16 +375,16 @@ export default function App() {
                       </button>
                     </div>
                   </div>
-                  <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[600px] overflow-y-auto custom-scrollbar">
+                  <div className="p-8 grid grid-cols-2 gap-4 md:gap-8 max-h-[600px] overflow-y-auto custom-scrollbar">
                     <div className="space-y-6">
-                      <p className="text-xs font-bold text-brand-orange/50 uppercase tracking-widest">English</p>
-                      <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-sm">
+                      <p className="text-[10px] md:text-xs font-bold text-brand-orange/50 uppercase tracking-widest">English</p>
+                      <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-[11px] md:text-sm">
                         {result.lyrics.english}
                       </pre>
                     </div>
-                    <div className="space-y-6 border-l border-white/5 pl-8">
-                      <p className="text-xs font-bold text-brand-orange/50 uppercase tracking-widest">Korean</p>
-                      <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-sm">
+                    <div className="space-y-6 border-l border-white/5 pl-4 md:pl-8">
+                      <p className="text-[10px] md:text-xs font-bold text-brand-orange/50 uppercase tracking-widest">Korean</p>
+                      <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-[11px] md:text-sm">
                         {result.lyrics.korean}
                       </pre>
                     </div>
@@ -490,8 +464,6 @@ interface CategorySectionProps {
   onToggle: (id: string) => void;
   onClear: () => void;
   onHover: (item: CategoryItem | null) => void;
-  onTouchStart: (item: CategoryItem) => void;
-  onTouchEnd: (id: string) => void;
 }
 
 function CategorySection({ 
@@ -500,9 +472,7 @@ function CategorySection({
   selected, 
   onToggle, 
   onClear, 
-  onHover,
-  onTouchStart,
-  onTouchEnd
+  onHover
 }: CategorySectionProps) {
   return (
     <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full">
@@ -525,8 +495,6 @@ function CategorySection({
             key={item.id}
             onMouseEnter={() => onHover(item)}
             onMouseLeave={() => onHover(null)}
-            onTouchStart={() => onTouchStart(item)}
-            onTouchEnd={() => onTouchEnd(item.id)}
             onClick={() => onToggle(item.id)}
             className={cn(
               "px-4 py-2 rounded-xl text-sm font-medium transition-all border",
