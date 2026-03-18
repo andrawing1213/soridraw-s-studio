@@ -34,12 +34,13 @@ export async function generateSong(
     
     Rules for Lyrics:
     - Structure: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Chorus], [Outro]
-    - Length: The song should be around 2:40 to 3:10 minutes long.
+    - Length: Adjust the lyrics length based on the tempo, genre, and mood of the song to ensure it fits within the target duration (2:30 to 3:00 minutes).
     - Provide both English and Korean versions.
     
     Rules for Prompt:
     - Use one of the provided base prompts as a reference and modify it to fit the selected keywords.
-    - ALWAYS include these constraints: (Restrained and steady emotional delivery, Target song length between 2 minutes 40 seconds and 3 minutes 10 seconds, soft and intimate 3-5 seconds instrumental outro after vocals end, minimal instrumentation, gradual instrumental fade-out, restrained vocal delivery, no dramatic ending, fade gently into silence).
+    - ALWAYS include these constraints: (Intimate and warm natural mix with light reverb, no dramatic build-up, no explosive climax, Target song length between 2minutes 40seconds and 3minutes 10seconds, Soft and intimate 3-5 seconds instrumental outro after vocals end, minimal instrumentation, Restrained vocal delivery, no dramatic ending, fade gently into silence, gradual instrumental fade-out).
+    - CRITICAL: The total song duration MUST be between 2 minutes 30 seconds and 3 minutes. NEVER exceed 3 minutes 20 seconds.
     - Ensure the song can be finished within 2 minutes 45 seconds if possible.
     
     Keywords to use:
