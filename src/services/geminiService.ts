@@ -39,7 +39,7 @@ export async function generateSong(
     
     Rules for Prompt:
     - Use one of the provided base prompts as a reference and modify it to fit the selected keywords.
-    - ALWAYS include these constraints: (Restrained and steady emotional delivery, Target song length between 2 minutes 40 seconds and 3 minutes 10 seconds, soft and intimate outro, minimal instrumentation, gradual instrumental fade-out, restrained vocal delivery, no dramatic ending, fade gently into silence).
+    - ALWAYS include these constraints: (Restrained and steady emotional delivery, Target song length between 2 minutes 40 seconds and 3 minutes 10 seconds, soft and intimate 3-5 seconds instrumental outro after vocals end, minimal instrumentation, gradual instrumental fade-out, restrained vocal delivery, no dramatic ending, fade gently into silence).
     - Ensure the song can be finished within 2 minutes 45 seconds if possible.
     
     Keywords to use:
