@@ -19,6 +19,7 @@ export const GENRES: CategoryItem[] = [
   { id: 'funk', label: 'Funk', description: '베이스와 드럼이 강조된 강력한 리듬 그루브 음악입니다.' },
   { id: 'house', label: 'House', description: '반복적인 4/4 비트와 전자적 질감의 음악입니다.' },
   { id: 'blues', label: 'Blues', description: '블루스 스케일과 코드를 기반으로 한 감정 표현 음악입니다.' },
+  { id: 'rap', label: 'Rap', description: '강렬한 비트 위에 리드미컬한 가사 전달이 특징인 음악입니다.' },
 ];
 
 export const MOODS: CategoryItem[] = [
@@ -39,6 +40,7 @@ export const MOODS: CategoryItem[] = [
   { id: 'intense', label: '강렬한', description: '강력하고 인상적인 타격감을 줍니다.' },
   { id: 'melancholic', label: '멜랑콜릭', description: '슬프지만 아름다운 성찰의 시간입니다.' },
   { id: 'urban', label: '어반', description: '세련된 도시 생활의 세련된 바이브입니다.' },
+  { id: 'mysterious', label: '신비로운', description: '알 수 없는 오묘함과 신비한 분위기를 자아내는 무드입니다.' },
 ];
 
 export const THEMES: CategoryItem[] = [
