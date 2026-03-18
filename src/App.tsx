@@ -189,13 +189,16 @@ export default function App() {
             <Music className="w-8 h-8 text-brand-orange" />
           </div>
         </motion.div>
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2 font-display">
+        <h1 
+          className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2 font-display"
+          style={{ fontFamily: 'Arial' }}
+        >
           SORIDRAW's <span className="text-studio-brown">Studio</span>
         </h1>
-        <p className="text-sm text-gray-500 font-medium tracking-widest uppercase mb-4">
+        <p className="text-[20px] text-gray-500 font-medium tracking-widest uppercase mb-4">
           Compose Your Atmosphere
         </p>
-        <p className="max-w-2xl mx-auto text-gray-400 leading-relaxed">
+        <p className="max-w-2xl mx-auto text-gray-400 leading-relaxed text-[18px]">
           '당신의 이야기를 음악으로'<br />
           키워드를 선택하여 세상에 단 하나 뿐인 당신만의 감성적인 곡을 만들어보세요.
         </p>
@@ -261,7 +264,7 @@ export default function App() {
                 }}
                 className="absolute inset-0 left-12 right-32 flex items-center cursor-text overflow-x-auto custom-scrollbar-hidden"
               >
-                <div className="whitespace-nowrap text-gray-400 text-lg pr-4 animate-scroll-hint md:animate-none">
+                <div className="whitespace-nowrap text-gray-400 text-base pr-4 animate-scroll-hint md:animate-none">
                   당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움)
                 </div>
               </div>
@@ -271,7 +274,7 @@ export default function App() {
               <button
                 onClick={applyRandom}
                 title="랜덤 선택"
-                className="p-3 rounded-xl bg-zinc-500/50 hover:bg-zinc-500 text-gray-200 hover:text-white transition-all"
+                className="p-3 rounded-xl bg-zinc-500/50 hover:bg-zinc-500 text-gray-200 hover:text-white transition-all text-base"
               >
                 <Sparkles className="w-5 h-5" />
               </button>
@@ -500,6 +503,10 @@ export default function App() {
         }
         .animate-scroll-hint {
           animation: scroll-hint 3s ease-in-out infinite;
+        }
+        /* Style for Moods button 5 as requested */
+        main > div:first-child > div:nth-child(2) > div:nth-child(2) > button:nth-of-type(5) {
+          background-color: #ff8300 !important;
         }
       `}</style>
     </div>
