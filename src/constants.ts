@@ -24,8 +24,8 @@ export const GENRES: CategoryItem[] = [
 
 export const MOODS: CategoryItem[] = [
   { id: 'quiet', label: '조용한', description: '차분하고 부드러운 분위기입니다.' },
-  { id: 'peaceful', label: '평온', description: '고요하고 평화로운 느낌을 줍니다.' },
-  { id: 'sweet', label: '달콤한', description: '기분 좋고 달콤한 무드입니다.' },
+  { id: 'peaceful', label: '평온한', description: '고요하고 평화로운 느낌을 줍니다.' },
+  { id: 'popping', label: '톡톡튀는', description: '생동감 넘치고 톡톡 튀는 무드입니다.' },
   { id: 'groovy', label: '그루비', description: '리드미컬하고 춤추고 싶은 바이브입니다.' },
   { id: 'addictive', label: '중독성', description: '귀에 쏙 들어오고 기억에 남는 사운드입니다.' },
   { id: 'dreamy', label: '몽환적', description: '초현실적이고 신비로운 분위기입니다.' },
@@ -41,28 +41,35 @@ export const MOODS: CategoryItem[] = [
   { id: 'melancholic', label: '멜랑콜릭', description: '슬프지만 아름다운 성찰의 시간입니다.' },
   { id: 'urban', label: '어반', description: '세련된 도시 생활의 세련된 바이브입니다.' },
   { id: 'mysterious', label: '신비로운', description: '알 수 없는 오묘함과 신비한 분위기를 자아내는 무드입니다.' },
+  { id: 'drive', label: '드라이브', description: '차를 타고 달릴 때 듣기 좋은 시원한 분위기입니다.' },
+  { id: 'workout', label: '운동', description: '활력을 불어넣어주는 에너지 넘치는 사운드입니다.' },
+  { id: 'walk', label: '산책', description: '가볍게 걸으며 듣기 좋은 편안한 리듬입니다.' },
+  { id: 'relaxed-mood', label: '여유로운', description: '긴장을 풀고 편안하게 즐길 수 있는 무드입니다.' },
 ];
 
 export const THEMES: CategoryItem[] = [
   { id: 'love', label: '사랑', description: '애정과 깊은 유대감을 다룹니다.' },
   { id: 'breakup', label: '이별', description: '헤어짐과 상실의 아픔을 노래합니다.' },
-  { id: 'nostalgia', label: '향수', description: '과거에 대한 그리움을 담았습니다.' },
+  { id: 'longing', label: '그리움', description: '과거에 대한 그리움과 향수를 담았습니다.' },
   { id: 'hope', label: '희망', description: '더 나은 내일을 향한 기대를 담았습니다.' },
   { id: 'city', label: '도시', description: '활기찬 도시 풍경 속의 삶을 그립니다.' },
   { id: 'loneliness', label: '외로움', description: '혼자 있는 느낌과 고독을 다룹니다.' },
   { id: 'fear', label: '두려움', description: '미지의 세계나 불안에 맞서는 감정입니다.' },
   { id: 'reminiscence', label: '회상', description: '추억을 되새기는 시간입니다.' },
-  { id: 'leisure', label: '여유', description: '휴식과 천천히 가는 삶의 미학입니다.' },
+  { id: 'weather', label: '날씨', description: '계절과 날씨가 주는 분위기를 담았습니다.' },
   { id: 'anger', label: '분노', description: '강한 불만이나 분노의 감정 표현입니다.' },
   { id: 'friendship', label: '우정', description: '동료들과의 유대와 우정을 다룹니다.' },
   { id: 'travel', label: '여행', description: '새로운 장소로 떠나는 여정입니다.' },
-  { id: 'self-reflection', label: '자아성찰', description: '내면을 들여다보는 시간입니다.' },
+  { id: 'self', label: '자아', description: '나 자신을 찾아가는 내면의 여정입니다.' },
   { id: 'night', label: '밤', description: '밤 시간의 고요함이나 신비로움을 담았습니다.' },
   { id: 'curiosity', label: '호기심', description: '알고 싶고 배우고 싶은 욕구입니다.' },
   { id: 'after-work', label: '퇴근', description: '하루를 마친 후의 해방감과 안도감입니다.' },
   { id: 'time', label: '시간', description: '시간의 흐름과 가치에 대한 이야기입니다.' },
-  { id: 'nature', label: '자연', description: '자연 세계의 아름다움을 노래합니다.' },
+  { id: 'season', label: '계절', description: '자연과 계절의 변화를 노래합니다.' },
   { id: 'growth', label: '성장', description: '개인적인 발전과 변화의 과정입니다.' },
+  { id: 'hobby', label: '취미', description: '좋아하는 일을 하며 느끼는 즐거움입니다.' },
+  { id: 'weekend', label: '주말', description: '기다려온 주말의 설렘과 휴식입니다.' },
+  { id: 'cafe', label: '카페', description: '커피 향과 함께하는 여유로운 시간입니다.' },
 ];
 
 export const BASE_PROMPTS = [

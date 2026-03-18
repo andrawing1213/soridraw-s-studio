@@ -33,6 +33,9 @@ export default function App() {
   const [pinnedGenres, setPinnedGenres] = useState<string[]>([]);
   const [pinnedMoods, setPinnedMoods] = useState<string[]>([]);
   const [pinnedThemes, setPinnedThemes] = useState<string[]>([]);
+  const [tempoEnabled, setTempoEnabled] = useState(false);
+  const [minBPM, setMinBPM] = useState(60);
+  const [maxBPM, setMaxBPM] = useState(140);
   const [userInput, setUserInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<SongResult | null>(null);
@@ -63,7 +66,7 @@ export default function App() {
 
     if (state.includes(id)) {
       set(state.filter(i => i !== id));
-    } else if (state.length < 5) {
+    } else if (state.length < 6) {
       set([...state, id]);
     }
   };
@@ -83,7 +86,7 @@ export default function App() {
     } else {
       // When pinning, ensure it's also selected
       if (!selected.includes(id)) {
-        if (selected.length < 5) {
+        if (selected.length < 6) {
           setSelected([...selected, id]);
           setPinned([...pinned, id]);
         }
@@ -126,32 +129,55 @@ export default function App() {
       return [...result, ...picked.map(p => p.id)];
     };
 
+    // Random button logic: Max 3 per category, total 5-10
     let g = getRandomForCategory(GENRES, pinnedGenres, 3);
     let m = getRandomForCategory(MOODS, pinnedMoods, 3);
     let t = getRandomForCategory(THEMES, pinnedThemes, 3);
     
     let total = g.length + m.length + t.length;
     
-    // If total is too low (less than 4), add more random items to reach at least 4
-    if (total < 4) {
+    // If total is not between 5 and 10, adjust
+    if (total < 5 || total > 10) {
       const allItems = [
         ...GENRES.filter(i => !g.includes(i.id)).map(i => ({ ...i, cat: 'genre' })),
         ...MOODS.filter(i => !m.includes(i.id)).map(i => ({ ...i, cat: 'mood' })),
         ...THEMES.filter(i => !t.includes(i.id)).map(i => ({ ...i, cat: 'theme' }))
       ];
-      const needed = 4 - total;
-      const extra = allItems.sort(() => 0.5 - Math.random()).slice(0, needed);
       
-      extra.forEach(p => {
-        if (p.cat === 'genre') g.push(p.id);
-        if (p.cat === 'mood') m.push(p.id);
-        if (p.cat === 'theme') t.push(p.id);
-      });
+      if (total < 5) {
+        const needed = 5 - total;
+        const extra = allItems.sort(() => 0.5 - Math.random()).slice(0, needed);
+        extra.forEach(p => {
+          if (p.cat === 'genre') g.push(p.id);
+          if (p.cat === 'mood') m.push(p.id);
+          if (p.cat === 'theme') t.push(p.id);
+        });
+      } else if (total > 10) {
+        // This shouldn't happen with max 3 per category (3*3=9), but for safety:
+        const toRemove = total - 10;
+        // Logic to remove if needed
+      }
     }
 
     setSelectedGenres(g);
     setSelectedMoods(m);
     setSelectedThemes(t);
+
+    // Random tempo logic
+    if (tempoEnabled) {
+      const isRange = Math.random() > 0.5;
+      const baseBPM = Math.floor(Math.random() * (140 - 60 + 1)) + 60;
+      if (isRange) {
+        const range = Math.floor(Math.random() * 5); // 0 to 4
+        const newMin = Math.max(60, baseBPM - Math.floor(range / 2));
+        const newMax = Math.min(140, newMin + range);
+        setMinBPM(newMin);
+        setMaxBPM(newMax);
+      } else {
+        setMinBPM(baseBPM);
+        setMaxBPM(baseBPM);
+      }
+    }
   };
 
   const handleGenerate = async () => {
@@ -184,14 +210,14 @@ export default function App() {
           randomKeywords.push(random.label);
         }
       } 
-      // If nothing selected, pick random (4-8 total)
+      // If nothing selected, pick random (5-10 total)
       else if (selectedCount === 0) {
         const allItems = [
           ...GENRES.map(i => ({ ...i, cat: 'genre' })),
           ...MOODS.map(i => ({ ...i, cat: 'mood' })),
           ...THEMES.map(i => ({ ...i, cat: 'theme' }))
         ];
-        const count = Math.floor(Math.random() * 5) + 4; // 4-8
+        const count = Math.floor(Math.random() * 6) + 5; // 5-10
         const picked = allItems.sort(() => 0.5 - Math.random()).slice(0, count);
         
         picked.forEach(p => {
@@ -206,7 +232,10 @@ export default function App() {
         finalGenres.map(id => GENRES.find(g => g.id === id)?.label || id),
         finalMoods.map(id => MOODS.find(m => m.id === id)?.label || id),
         finalThemes.map(id => THEMES.find(t => t.id === id)?.label || id),
-        userInput
+        userInput,
+        tempoEnabled && (minBPM !== 60 || maxBPM !== 140) && (maxBPM - minBPM <= 10)
+          ? (minBPM === maxBPM ? `Exactly ${minBPM} BPM` : `Between ${minBPM} and ${maxBPM} BPM`)
+          : undefined
       );
 
       const allApplied = [
@@ -299,6 +328,18 @@ export default function App() {
             onClear={() => clearCategory('theme')}
             onUnpinAll={() => unpinAll('theme')}
             onHover={setHoveredItem}
+          />
+        </div>
+
+        {/* Tempo Control Bar */}
+        <div className="mb-10">
+          <TempoControl 
+            enabled={tempoEnabled}
+            onEnabledChange={setTempoEnabled}
+            min={minBPM}
+            max={maxBPM}
+            onMinChange={setMinBPM}
+            onMaxChange={setMaxBPM}
           />
         </div>
 
@@ -612,7 +653,7 @@ function CategorySection({
         <h3 className="text-[20px] font-bold text-white flex items-center gap-2">
           <span className="w-1.5 h-6 bg-brand-orange rounded-full" />
           {title}
-          <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/5)</span>
+          <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/6)</span>
         </h3>
         <div className="flex items-center gap-2">
           <button 
@@ -670,6 +711,207 @@ function CategorySection({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+interface TempoControlProps {
+  enabled: boolean;
+  onEnabledChange: (val: boolean) => void;
+  min: number;
+  max: number;
+  onMinChange: (val: number) => void;
+  onMaxChange: (val: number) => void;
+}
+
+function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxChange }: TempoControlProps) {
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
+
+  const handleMouseDown = (type: 'min' | 'max') => {
+    if (!enabled) return;
+    setIsDragging(type);
+    document.body.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !sliderRef.current) return;
+
+      const rect = sliderRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const percent = x / rect.width;
+      const val = Math.round(60 + percent * (140 - 60));
+
+      if (isDragging === 'min') {
+        if (val <= max) onMinChange(val);
+      } else {
+        if (val >= min) onMaxChange(val);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(null);
+      document.body.style.userSelect = '';
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, min, max, onMinChange, onMaxChange]);
+
+  const minPos = ((min - 60) / (140 - 60)) * 100;
+  const maxPos = ((max - 60) / (140 - 60)) * 100;
+  const isValid = (max - min <= 10) && (min !== 60 || max !== 140);
+
+  return (
+    <div className={cn(
+      "bg-zinc-900/40 rounded-3xl p-6 border border-white/5 transition-all",
+      !enabled && "opacity-50 grayscale-[0.5]"
+    )}>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center">
+              <input 
+                type="checkbox" 
+                id="tempo-toggle"
+                checked={enabled}
+                onChange={(e) => onEnabledChange(e.target.checked)}
+                className="w-5 h-5 rounded border-2 border-brand-orange bg-zinc-800 text-brand-orange focus:ring-brand-orange transition-all cursor-pointer appearance-none checked:bg-zinc-800 checked:border-brand-orange"
+              />
+              {enabled && (
+                <Check className="w-3.5 h-3.5 text-brand-orange absolute left-0.5 pointer-events-none" strokeWidth={4} />
+              )}
+            </div>
+            <label htmlFor="tempo-toggle" className="text-[18px] font-bold text-white cursor-pointer select-none">
+              Tempo (BPM)
+            </label>
+          </div>
+          
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800/80 rounded-lg border border-white/10 shadow-inner">
+            <input
+              type="number"
+              min={60}
+              max={max}
+              value={min}
+              disabled={!enabled}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) {
+                  const clamped = Math.max(60, Math.min(val, max));
+                  onMinChange(clamped);
+                }
+              }}
+              className="w-8 bg-transparent text-cyan-400 font-mono font-bold text-base focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-gray-600 font-bold text-sm">-</span>
+            <input
+              type="number"
+              min={min}
+              max={140}
+              value={max}
+              disabled={!enabled}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) {
+                  const clamped = Math.max(min, Math.min(val, 140));
+                  onMaxChange(clamped);
+                }
+              }}
+              className="w-8 bg-transparent text-rose-400 font-mono font-bold text-base focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-gray-500 text-[9px] uppercase font-bold tracking-tighter">bpm</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-2 mb-4">
+        <div 
+          ref={sliderRef}
+          className="relative h-2.5 bg-zinc-800 rounded-full cursor-pointer"
+          onClick={(e) => {
+            if (!enabled) return;
+            const rect = sliderRef.current!.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percent = x / rect.width;
+            const val = Math.round(60 + percent * (140 - 60));
+            
+            // Snap to nearest handle but respect constraints
+            if (Math.abs(val - min) < Math.abs(val - max)) {
+              onMinChange(Math.min(val, max));
+            } else {
+              onMaxChange(Math.max(val, min));
+            }
+          }}
+        >
+          {/* Active Range Bar */}
+          <div 
+            className={cn(
+              "absolute h-full rounded-full transition-colors",
+              enabled ? (isValid ? "bg-brand-orange" : "bg-zinc-600") : "bg-zinc-700"
+            )}
+            style={{ left: `${minPos}%`, width: `${maxPos - minPos}%` }}
+          />
+
+          {/* Min Handle */}
+          <div 
+            onMouseDown={(e) => { e.stopPropagation(); handleMouseDown('min'); }}
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing",
+              enabled ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
+              isDragging === 'min' && "scale-125 border-cyan-400"
+            )}
+            style={{ left: `${minPos}%` }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+          </div>
+
+          {/* Max Handle */}
+          <div 
+            onMouseDown={(e) => { e.stopPropagation(); handleMouseDown('max'); }}
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing",
+              enabled ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
+              isDragging === 'max' && "scale-125 border-rose-400"
+            )}
+            style={{ left: `${maxPos}%` }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          </div>
+        </div>
+        
+        <div className="flex justify-between mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+          <span>60 BPM</span>
+          <span>100 BPM</span>
+          <span>140 BPM</span>
+        </div>
+      </div>
+
+      {/* Status Guidance Text - Repositioned to Bottom Center */}
+      <div className="flex justify-center mt-2">
+        {enabled ? (
+          isValid ? (
+            <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">
+              <Check className="w-3.5 h-3.5" /> 템포 적용됨
+            </span>
+          ) : (
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
+              {min === 60 && max === 140 ? "기본값 (랜덤 적용)" : "최소/최대 범위 10 이하일 때 적용"}
+            </span>
+          )
+        ) : (
+          <span className="text-gray-600 text-xs font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
+            템포 기능 비활성화
+          </span>
+        )}
       </div>
     </div>
   );
