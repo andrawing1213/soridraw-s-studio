@@ -11,7 +11,9 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  Pin
+  Pin,
+  PinOff,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -105,23 +107,46 @@ export default function App() {
     setResult(null);
   };
 
+  const unpinAll = (category: 'genre' | 'mood' | 'theme') => {
+    if (category === 'genre') setPinnedGenres([]);
+    if (category === 'mood') setPinnedMoods([]);
+    if (category === 'theme') setPinnedThemes([]);
+  };
+
   const applyRandom = () => {
-    const getRandom = (items: CategoryItem[], max: number) => {
-      const count = Math.floor(Math.random() * max) + 1;
-      return [...items].sort(() => 0.5 - Math.random()).slice(0, count).map(i => i.id);
+    const getRandomForCategory = (all: CategoryItem[], pinned: string[], maxTotal: number) => {
+      const result = [...pinned];
+      const remainingPool = all.filter(item => !pinned.includes(item.id));
+      
+      // Decide how many more to add (up to maxTotal)
+      const currentCount = pinned.length;
+      const additionalCount = Math.max(0, Math.floor(Math.random() * (maxTotal - currentCount + 1)));
+      const picked = [...remainingPool].sort(() => 0.5 - Math.random()).slice(0, additionalCount);
+      
+      return [...result, ...picked.map(p => p.id)];
     };
 
-    // Random button logic: max 3 per cat, total 4-8
-    let g = getRandom(GENRES, 3);
-    let m = getRandom(MOODS, 3);
-    let t = getRandom(THEMES, 3);
+    let g = getRandomForCategory(GENRES, pinnedGenres, 3);
+    let m = getRandomForCategory(MOODS, pinnedMoods, 3);
+    let t = getRandomForCategory(THEMES, pinnedThemes, 3);
     
     let total = g.length + m.length + t.length;
-    while (total < 4 || total > 8) {
-       g = getRandom(GENRES, 3);
-       m = getRandom(MOODS, 3);
-       t = getRandom(THEMES, 3);
-       total = g.length + m.length + t.length;
+    
+    // If total is too low (less than 4), add more random items to reach at least 4
+    if (total < 4) {
+      const allItems = [
+        ...GENRES.filter(i => !g.includes(i.id)).map(i => ({ ...i, cat: 'genre' })),
+        ...MOODS.filter(i => !m.includes(i.id)).map(i => ({ ...i, cat: 'mood' })),
+        ...THEMES.filter(i => !t.includes(i.id)).map(i => ({ ...i, cat: 'theme' }))
+      ];
+      const needed = 4 - total;
+      const extra = allItems.sort(() => 0.5 - Math.random()).slice(0, needed);
+      
+      extra.forEach(p => {
+        if (p.cat === 'genre') g.push(p.id);
+        if (p.cat === 'mood') m.push(p.id);
+        if (p.cat === 'theme') t.push(p.id);
+      });
     }
 
     setSelectedGenres(g);
@@ -250,6 +275,7 @@ export default function App() {
             onToggle={(id) => toggleSelection(id, 'genre')}
             onTogglePin={(id) => togglePin(id, 'genre')}
             onClear={() => clearCategory('genre')}
+            onUnpinAll={() => unpinAll('genre')}
             onHover={setHoveredItem}
           />
           <CategorySection 
@@ -260,6 +286,7 @@ export default function App() {
             onToggle={(id) => toggleSelection(id, 'mood')}
             onTogglePin={(id) => togglePin(id, 'mood')}
             onClear={() => clearCategory('mood')}
+            onUnpinAll={() => unpinAll('mood')}
             onHover={setHoveredItem}
           />
           <CategorySection 
@@ -270,6 +297,7 @@ export default function App() {
             onToggle={(id) => toggleSelection(id, 'theme')}
             onTogglePin={(id) => togglePin(id, 'theme')}
             onClear={() => clearCategory('theme')}
+            onUnpinAll={() => unpinAll('theme')}
             onHover={setHoveredItem}
           />
         </div>
@@ -304,13 +332,13 @@ export default function App() {
                     className="flex-shrink-0 pr-12"
                     style={{ fontSize: '17px', color: '#999ea6' }}
                   >
-                    당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움)
+                    당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)
                   </div>
                   <div 
                     className="flex-shrink-0 pr-12"
                     style={{ fontSize: '17px', color: '#999ea6' }}
                   >
-                    당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움)
+                    당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)
                   </div>
                 </div>
               </div>
@@ -563,6 +591,7 @@ interface CategorySectionProps {
   onToggle: (id: string) => void;
   onTogglePin: (id: string) => void;
   onClear: () => void;
+  onUnpinAll: () => void;
   onHover: (item: CategoryItem | null) => void;
 }
 
@@ -574,6 +603,7 @@ function CategorySection({
   onToggle, 
   onTogglePin,
   onClear, 
+  onUnpinAll,
   onHover
 }: CategorySectionProps) {
   return (
@@ -584,13 +614,22 @@ function CategorySection({
           {title}
           <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/5)</span>
         </h3>
-        <button 
-          onClick={onClear}
-          className="text-[13px] font-medium transition-colors uppercase tracking-wider"
-          style={{ color: '#7985c7' }}
-        >
-          Clear
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onUnpinAll}
+            title="Unpin All"
+            className="p-2 rounded-lg bg-white/5 hover:bg-brand-orange/20 text-gray-500 hover:text-brand-orange transition-all"
+          >
+            <PinOff className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={onClear}
+            title="Clear"
+            className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         {items.map((item) => {
@@ -604,17 +643,16 @@ function CategorySection({
                 onMouseLeave={() => onHover(null)}
                 onClick={() => onToggle(item.id)}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium transition-all border flex items-center gap-2",
+                  "px-3 py-1.5 rounded-xl text-sm font-medium transition-all border flex items-center gap-2",
                   isSelected
                     ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
                     : "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200"
                 )}
               >
                 {item.label}
-                {isPinned && <Pin className="w-3 h-3 fill-current" />}
               </button>
               
-              {/* Pin Toggle Button */}
+              {/* Pin Toggle Button - Top Right Corner Only */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -623,7 +661,7 @@ function CategorySection({
                 className={cn(
                   "absolute -top-2 -right-2 p-1.5 rounded-full border transition-all z-10",
                   isPinned 
-                    ? "bg-brand-orange border-orange-400 text-white opacity-100 scale-100" 
+                    ? "bg-[#A0522D] border-[#8B4513] text-white opacity-100 scale-100" 
                     : "bg-zinc-800 border-white/10 text-gray-500 opacity-0 scale-75 group-hover/btn:opacity-100 group-hover/btn:scale-100 hover:text-brand-orange"
                 )}
               >
