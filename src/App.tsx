@@ -729,18 +729,19 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
 
-  const handleMouseDown = (type: 'min' | 'max') => {
+  const handleStart = (type: 'min' | 'max') => {
     if (!enabled) return;
     setIsDragging(type);
     document.body.style.userSelect = 'none';
+    document.body.style.overflow = 'hidden';
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number) => {
       if (!isDragging || !sliderRef.current) return;
 
       const rect = sliderRef.current.getBoundingClientRect();
-      const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const percent = x / rect.width;
       const val = Math.round(60 + percent * (140 - 60));
 
@@ -751,19 +752,31 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
       }
     };
 
-    const handleMouseUp = () => {
+    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX);
+      }
+    };
+
+    const handleEnd = () => {
       setIsDragging(null);
       document.body.style.userSelect = '';
+      document.body.style.overflow = '';
     };
 
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', handleEnd);
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', handleEnd);
     };
   }, [isDragging, min, max, onMinChange, onMaxChange]);
 
@@ -863,9 +876,10 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
 
           {/* Min Handle */}
           <div 
-            onMouseDown={(e) => { e.stopPropagation(); handleMouseDown('min'); }}
+            onMouseDown={(e) => { e.stopPropagation(); handleStart('min'); }}
+            onTouchStart={(e) => { e.stopPropagation(); handleStart('min'); }}
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing",
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
               enabled ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
               isDragging === 'min' && "scale-125 border-cyan-400"
             )}
@@ -876,9 +890,10 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
 
           {/* Max Handle */}
           <div 
-            onMouseDown={(e) => { e.stopPropagation(); handleMouseDown('max'); }}
+            onMouseDown={(e) => { e.stopPropagation(); handleStart('max'); }}
+            onTouchStart={(e) => { e.stopPropagation(); handleStart('max'); }}
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing",
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
               enabled ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
               isDragging === 'max' && "scale-125 border-rose-400"
             )}

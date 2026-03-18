@@ -3,6 +3,8 @@ import { CategoryItem } from './types';
 export const GENRES: CategoryItem[] = [
   { id: 'indie', label: 'Indie', description: '독창적이고 비주류적인 사운드를 가진 독립 음악입니다.' },
   { id: 'rnb', label: 'RnB', description: '소울풀한 보컬과 그루브에 집중한 리듬 앤 블루스입니다.' },
+  { id: 'lofi', label: 'Lofi', description: '편안하고 아늑한 분위기의 로우파이 비트입니다.' },
+  { id: 'ambient', label: 'Ambient', description: '공간감과 분위기에 집중한 잔잔한 배경 음악입니다.' },
   { id: 'folk', label: 'Folk', description: '이야기 전달을 중심으로 하는 전통적인 어쿠스틱 음악입니다.' },
   { id: 'ballad', label: 'Ballad', description: '사랑이나 이별을 주제로 한 감성적이고 느린 템포의 곡입니다.' },
   { id: 'jazz', label: 'Jazz', description: '복잡한 화성과 즉흥적인 리듬이 특징인 음악입니다.' },
