@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { SongResult } from "../types";
+import { SongResult, LyricsLength, DrumStyle } from "../types";
 import { BASE_PROMPTS } from "../constants";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
@@ -9,6 +9,8 @@ export async function generateSong(
   moods: string[],
   themes: string[],
   userInput: string,
+  lyricsLength: LyricsLength = 'normal',
+  drumStyle: DrumStyle = 'none',
   tempo?: string
 ): Promise<SongResult> {
   const model = "gemini-3-flash-preview";
@@ -26,7 +28,12 @@ export async function generateSong(
         "korean": "Full Korean translation of the lyrics with the same structure"
       },
       "prompt": "A detailed music production prompt",
-      "appliedKeywords": ["keyword1", "keyword2", ...]
+      "appliedKeywords": {
+        "genre": ["genre1", "genre2", ...],
+        "mood": ["mood1", "mood2", ...],
+        "theme": ["theme1", "theme2", ...],
+        "tempo": "tempo info if provided"
+      }
     }
 
     Rules for Title:
@@ -35,7 +42,13 @@ export async function generateSong(
     
     Rules for Lyrics:
     - Structure: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Chorus], [Outro]
-    - Length: Adjust the lyrics length based on the tempo, genre, and mood of the song to ensure it fits within the target duration (2:30 to 3:00 minutes).
+    - CRITICAL: Ensure clear line breaks between sections.
+    - CRITICAL: The content of the lyrics MUST be influenced ONLY by the 'Themes' and 'User Story'. 
+    - CRITICAL: The 'Genres' and 'Moods' should NOT directly influence the lyrics content, but they should influence the music prompt.
+    - Length Constraint (lyricsLength: ${lyricsLength}):
+      - 'short': Concise and implicit lyrics, suitable for Jazz or Ballads. Fewer lines per section.
+      - 'normal': Standard length for most pop songs.
+      - 'long': More detailed lyrics with slightly more lines per section, suitable for Rap, Hip-Hop, Metal, Latin, or Dance. Keep it within a reasonable length for a 3-minute song. Avoid excessive repetition unless it's a stylistic choice.
     - Provide both English and Korean versions.
     - CRITICAL: When providing Korean titles and lyrics, do NOT translate English literally. Instead, capture the lyrical and poetic essence of the song to make it feel natural, emotionally resonant, and beautiful in Korean. The Korean lyrics should read like a standalone poem or song.
     
@@ -45,6 +58,7 @@ export async function generateSong(
     - If ANY other genre (e.g., Techno, K-Pop, Metal, etc.) is included in the selection, do NOT use the base prompts, even if the above conditions are met.
     - If NO genres are selected (unspecified generation), you have a 40% chance to use the base prompts as a style reference. Otherwise, create a fresh and appropriate style based on the moods and themes.
     - ALWAYS include these constraints: (Intimate and warm natural mix with light reverb, no dramatic build-up, no explosive climax, Target song length between 2 minutes 30 seconds and 3 minute, Soft and intimate outro, minimal instrumentation, Restrained vocal delivery, no dramatic ending, fade gently into silence, gradual instrumental fade-out).
+    - DRUM STYLE: ${drumStyle === 'half-time' ? "Apply 'Half Time' drum style." : drumStyle === 'double-time' ? "Apply 'Double Time' drum style." : ""}
     - CRITICAL: The total song duration MUST be between 2 minutes 30 seconds and 3 minutes. NEVER exceed 3 minutes 20 seconds.
     - Ensure the song can be finished within 2 minutes 45 seconds if possible.
     - ${tempo ? `TEMPO CONSTRAINT: ${tempo}` : "Tempo should be appropriate for the genre and mood."}
@@ -79,8 +93,14 @@ export async function generateSong(
           },
           prompt: { type: Type.STRING },
           appliedKeywords: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
+            type: Type.OBJECT,
+            properties: {
+              genre: { type: Type.ARRAY, items: { type: Type.STRING } },
+              mood: { type: Type.ARRAY, items: { type: Type.STRING } },
+              theme: { type: Type.ARRAY, items: { type: Type.STRING } },
+              tempo: { type: Type.STRING }
+            },
+            required: ["genre", "mood", "theme"]
           }
         },
         required: ["title", "lyrics", "prompt", "appliedKeywords"]

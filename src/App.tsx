@@ -13,13 +13,18 @@ import {
   ChevronUp,
   Pin,
   PinOff,
-  Trash2
+  Trash2,
+  History,
+  ArrowLeft,
+  ArrowRight,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GENRES, MOODS, THEMES } from './constants';
-import { CategoryItem, SongResult } from './types';
+import { CategoryItem, SongResult, LyricsLength, DrumStyle } from './types';
 import { generateSong } from './services/geminiService';
 
 function cn(...inputs: ClassValue[]) {
@@ -30,18 +35,48 @@ export default function App() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [lyricsLength, setLyricsLength] = useState<LyricsLength>('normal');
+  const [drumStyle, setDrumStyle] = useState<DrumStyle>('none');
   const [pinnedGenres, setPinnedGenres] = useState<string[]>([]);
   const [pinnedMoods, setPinnedMoods] = useState<string[]>([]);
   const [pinnedThemes, setPinnedThemes] = useState<string[]>([]);
   const [tempoEnabled, setTempoEnabled] = useState(false);
-  const [minBPM, setMinBPM] = useState(60);
-  const [maxBPM, setMaxBPM] = useState(140);
+  const [minBPM, setMinBPM] = useState(70);
+  const [maxBPM, setMaxBPM] = useState(90);
   const [userInput, setUserInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<SongResult | null>(null);
+  const [history, setHistory] = useState<SongResult[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<CategoryItem | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('soridraw_history');
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        setHistory(parsed);
+        if (parsed.length > 0) {
+          setResult(parsed[0]);
+          setHistoryIndex(0);
+        }
+      } catch (e) {
+        console.error('Failed to parse history', e);
+      }
+    }
+  }, []);
+
+  // Save history to localStorage
+  useEffect(() => {
+    if (history.length > 0) {
+      localStorage.setItem('soridraw_history', JSON.stringify(history));
+    }
+  }, [history]);
 
   useEffect(() => {
     if (hoveredItem) {
@@ -168,9 +203,9 @@ export default function App() {
       const isRange = Math.random() > 0.5;
       const baseBPM = Math.floor(Math.random() * (140 - 60 + 1)) + 60;
       if (isRange) {
-        const range = Math.floor(Math.random() * 5); // 0 to 4
-        const newMin = Math.max(60, baseBPM - Math.floor(range / 2));
-        const newMax = Math.min(140, newMin + range);
+        const range = Math.floor(Math.random() * 11); // 0 to 10
+        const newMin = Math.max(40, baseBPM - Math.floor(range / 2));
+        const newMax = Math.min(160, newMin + range);
         setMinBPM(newMin);
         setMaxBPM(newMax);
       } else {
@@ -181,7 +216,19 @@ export default function App() {
   };
 
   const handleGenerate = async () => {
+    if (isGenerating) {
+      // Cancel logic
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      setIsGenerating(false);
+      return;
+    }
+
     setIsGenerating(true);
+    abortControllerRef.current = new AbortController();
+
     try {
       let finalGenres = [...selectedGenres];
       let finalMoods = [...selectedMoods];
@@ -228,32 +275,82 @@ export default function App() {
         });
       }
 
+      const tempoInfo = tempoEnabled && (minBPM !== 40 || maxBPM !== 160) && (maxBPM - minBPM <= 20)
+        ? (minBPM === maxBPM ? `Exactly ${minBPM} BPM` : `Between ${minBPM} and ${maxBPM} BPM`)
+        : undefined;
+
       const song = await generateSong(
         finalGenres.map(id => GENRES.find(g => g.id === id)?.label || id),
         finalMoods.map(id => MOODS.find(m => m.id === id)?.label || id),
         finalThemes.map(id => THEMES.find(t => t.id === id)?.label || id),
         userInput,
-        tempoEnabled && (minBPM !== 60 || maxBPM !== 140) && (maxBPM - minBPM <= 10)
-          ? (minBPM === maxBPM ? `Exactly ${minBPM} BPM` : `Between ${minBPM} and ${maxBPM} BPM`)
-          : undefined
+        lyricsLength,
+        drumStyle,
+        tempoInfo
       );
 
-      const allApplied = [
-        ...finalGenres.map(id => GENRES.find(g => g.id === id)?.label || id),
-        ...finalMoods.map(id => MOODS.find(m => m.id === id)?.label || id),
-        ...finalThemes.map(id => THEMES.find(t => t.id === id)?.label || id)
-      ];
+      // Check if aborted before updating state
+      if (abortControllerRef.current?.signal.aborted) return;
 
-      setResult({
+      const newResult = {
         ...song,
-        appliedKeywords: allApplied,
         randomKeywords
-      });
-    } catch (error) {
-      console.error(error);
+      };
+
+      setResult(newResult);
+      setHistory(prev => [newResult, ...prev].slice(0, 5)); // Keep last 5
+      setHistoryIndex(0);
+      setIsPromptExpanded(false);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Generation cancelled');
+      } else {
+        console.error(error);
+      }
     } finally {
       setIsGenerating(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const navigateHistory = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setResult(history[newIndex]);
+      setIsPromptExpanded(false);
+    } else if (direction === 'next' && historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setResult(history[newIndex]);
+      setIsPromptExpanded(false);
+    }
+  };
+
+  const copyAll = () => {
+    if (!result) return;
+    const keywords = [
+      `[Genres] ${result.appliedKeywords.genre.join(', ')}`,
+      `[Moods] ${result.appliedKeywords.mood.join(', ')}`,
+      `[Themes] ${result.appliedKeywords.theme.join(', ')}`,
+      result.appliedKeywords.tempo ? `[Tempo] ${result.appliedKeywords.tempo}` : ''
+    ].filter(Boolean).join('\n');
+
+    const text = `
+${keywords}
+
+${result.title}
+
+[Lyrics - English]
+${result.lyrics.english}
+
+[Lyrics - Korean]
+${result.lyrics.korean}
+
+[Music Prompt]
+${result.prompt}
+    `.trim();
+    copyToClipboard(text, 'all');
   };
 
   const copyToClipboard = (text: string, type: string) => {
@@ -298,6 +395,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <CategorySection 
             title="장르" 
+            description="곡의 전반적인 음악 스타일을 결정합니다. (프롬프트에 영향)"
             items={GENRES} 
             selected={selectedGenres} 
             pinned={pinnedGenres}
@@ -306,9 +404,11 @@ export default function App() {
             onClear={() => clearCategory('genre')}
             onUnpinAll={() => unpinAll('genre')}
             onHover={setHoveredItem}
+            hoveredItem={hoveredItem}
           />
           <CategorySection 
             title="분위기" 
+            description="곡의 멜로디와 감정선을 결정합니다. (프롬프트에 영향)"
             items={MOODS} 
             selected={selectedMoods} 
             pinned={pinnedMoods}
@@ -317,9 +417,11 @@ export default function App() {
             onClear={() => clearCategory('mood')}
             onUnpinAll={() => unpinAll('mood')}
             onHover={setHoveredItem}
+            hoveredItem={hoveredItem}
           />
           <CategorySection 
             title="주제" 
+            description="가사의 내용과 핵심 메시지를 결정합니다. (가사에 영향)"
             items={THEMES} 
             selected={selectedThemes} 
             pinned={pinnedThemes}
@@ -328,6 +430,20 @@ export default function App() {
             onClear={() => clearCategory('theme')}
             onUnpinAll={() => unpinAll('theme')}
             onHover={setHoveredItem}
+            hoveredItem={hoveredItem}
+          />
+        </div>
+
+        {/* Lyrics Length & Drum Style Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <LyricsLengthControl 
+            value={lyricsLength}
+            onChange={setLyricsLength}
+          />
+          <DrumStyleControl 
+            lyricsLength={lyricsLength}
+            value={drumStyle}
+            onChange={setDrumStyle}
           />
         </div>
 
@@ -386,19 +502,36 @@ export default function App() {
             )}
 
             <div className="absolute inset-y-2 right-2 flex items-center gap-2 z-10">
-              <button
-                onClick={applyRandom}
-                title="랜덤 선택"
-                className="p-3 rounded-xl bg-zinc-500/50 hover:bg-zinc-500 text-gray-200 hover:text-white transition-all text-base"
-              >
-                <Sparkles className="w-5 h-5" />
-              </button>
-              <button
-                onClick={clearAll}
-                className="px-4 py-3 rounded-xl bg-zinc-500/50 hover:bg-zinc-500 text-gray-200 hover:text-white transition-all text-sm font-medium"
-              >
-                Clear all
-              </button>
+              <div className="relative">
+                <button
+                  onClick={applyRandom}
+                  onMouseEnter={() => setHoveredItem({ id: 'random', label: '랜덤 선택', description: '키워드를 무작위로 조합합니다.' })}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className="p-3 rounded-xl bg-brand-orange text-white hover:brightness-110 transition-all shadow-lg shadow-brand-orange/20"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </button>
+                {hoveredItem?.id === 'random' && (
+                  <div className="absolute bottom-full right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none">
+                    <p className="text-[11px] text-gray-300 leading-snug">키워드를 무작위로 조합합니다.</p>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  onClick={clearAll}
+                  onMouseEnter={() => setHoveredItem({ id: 'clear-all', label: 'Clear all', description: '핀을 제외한 모든 선택 삭제' })}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className="px-4 py-3 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white transition-all text-sm font-bold"
+                >
+                  Clear all
+                </button>
+                {hoveredItem?.id === 'clear-all' && (
+                  <div className="absolute bottom-full right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none">
+                    <p className="text-[11px] text-gray-300 leading-snug">핀을 제외한 모든 선택 삭제</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -431,18 +564,17 @@ export default function App() {
 
           <button
             onClick={handleGenerate}
-            disabled={isGenerating}
             className={cn(
               "w-full py-5 rounded-2xl text-white font-bold text-xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-[0.98]",
               isGenerating 
-                ? "bg-zinc-800 text-gray-600" 
+                ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30" 
                 : "music-waves shadow-brand-orange/20 hover:brightness-110"
             )}
           >
             {isGenerating ? (
               <>
                 <Loader2 className="w-6 h-6 animate-spin" />
-                작곡 중...
+                작곡 취소하기
               </>
             ) : (
               <>
@@ -461,27 +593,128 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8 pt-12 border-t border-white/5"
             >
+              {/* History Navigation & Copy All */}
+              <div className="flex items-center justify-between bg-zinc-900/30 rounded-2xl p-4 border border-white/5">
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-lg border border-white/10 cursor-help relative group/hist"
+                    onMouseEnter={() => setHoveredItem({ id: 'history-info', label: 'History', description: '최근 생성한 곡을 최대 5곡까지 다시 볼 수 있습니다.' })}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <History className="w-4 h-4 text-brand-orange" />
+                    <span className="text-xs font-bold text-gray-400">History</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => navigateHistory('prev')}
+                      disabled={historyIndex >= history.length - 1}
+                      onMouseEnter={() => setHoveredItem({ id: 'hist-prev', label: '이전 곡', description: '이전에 생성한 곡으로 이동합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="p-2 rounded-lg hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-sm font-mono text-gray-500">
+                      {historyIndex + 1} / {history.length}
+                    </span>
+                    <button
+                      onClick={() => navigateHistory('next')}
+                      disabled={historyIndex <= 0}
+                      onMouseEnter={() => setHoveredItem({ id: 'hist-next', label: '다음 곡', description: '다음에 생성한 곡으로 이동합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="p-2 rounded-lg hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={copyAll}
+                  onMouseEnter={() => setHoveredItem({ id: 'copy-all', label: '전체 복사', description: '키워드, 제목, 가사, 프롬프트를 한 번에 복사합니다.' })}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange text-sm font-bold transition-all border border-brand-orange/20"
+                >
+                  {copiedType === 'all' ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Copied All!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy All Details
+                    </>
+                  )}
+                </button>
+              </div>
+
               {/* Applied Keywords After Generation */}
-              <div className="bg-zinc-900/50 rounded-2xl p-6 border border-white/5">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Check className="w-4 h-4 text-brand-orange" />
-                  적용된 키워드
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {result.appliedKeywords.map((kw, idx) => {
-                    const isRandom = result.randomKeywords?.includes(kw);
-                    return (
-                      <span 
-                        key={idx} 
-                        className={cn(
-                          "px-3 py-1 rounded-lg text-sm",
-                          isRandom ? "bg-brand-orange/20 text-brand-orange font-bold" : "bg-zinc-800 text-gray-300"
-                        )}
-                      >
-                        {kw}
-                      </span>
-                    );
-                  })}
+              <div className="bg-zinc-900/50 rounded-2xl p-4 border border-white/5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <Check className="w-4 h-4 text-brand-orange" />
+                    적용된 키워드 (Applied Keywords)
+                  </h3>
+                  <button
+                    onClick={() => {
+                      const kwText = [
+                        `[Genres] ${result.appliedKeywords.genre.join(', ')}`,
+                        `[Moods] ${result.appliedKeywords.mood.join(', ')}`,
+                        `[Themes] ${result.appliedKeywords.theme.join(', ')}`,
+                        result.appliedKeywords.tempo ? `[Tempo] ${result.appliedKeywords.tempo}` : ''
+                      ].filter(Boolean).join('\n');
+                      copyToClipboard(kwText, 'keywords');
+                    }}
+                    onMouseEnter={() => setHoveredItem({ id: 'copy-keywords', label: '키워드 복사', description: '적용된 모든 키워드를 복사합니다.' })}
+                    onMouseLeave={() => setHoveredItem(null)}
+                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                  >
+                    {copiedType === 'keywords' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(['genre', 'mood', 'theme'] as const).map((cat) => (
+                    <div key={cat} className="space-y-1.5 group/cat">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">{cat}</p>
+                        <button
+                          onClick={() => copyToClipboard(result.appliedKeywords[cat].join(', '), `kw-${cat}`)}
+                          className="opacity-0 group-hover/cat:opacity-100 transition-opacity p-1 rounded hover:bg-white/5 text-gray-600 hover:text-gray-400"
+                        >
+                          {copiedType === `kw-${cat}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {result.appliedKeywords[cat].map((kw, idx) => {
+                          const isRandom = result.randomKeywords?.includes(kw);
+                          return (
+                            <span 
+                              key={idx} 
+                              className={cn(
+                                "px-2 py-0.5 rounded-md text-[11px] transition-all",
+                                isRandom 
+                                  ? "bg-brand-orange/20 text-brand-orange font-bold border border-brand-orange/30" 
+                                  : "bg-zinc-800 text-gray-400 border border-white/5"
+                              )}
+                            >
+                              {kw}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {result.appliedKeywords.tempo && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">tempo</p>
+                      <div className="flex flex-wrap gap-1">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] bg-zinc-800 text-gray-400 border border-white/5">
+                          {result.appliedKeywords.tempo}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -490,6 +723,8 @@ export default function App() {
                 <div className="absolute top-0 right-0 p-4">
                   <button
                     onClick={() => copyToClipboard(result.title, 'title')}
+                    onMouseEnter={() => setHoveredItem({ id: 'copy-title', label: '제목 복사', description: '곡의 제목을 복사합니다.' })}
+                    onMouseLeave={() => setHoveredItem(null)}
                     className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
                   >
                     {copiedType === 'title' ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
@@ -503,66 +738,90 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Lyrics Section */}
-                <div className="bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden">
-                  <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
-                    <h3 className="font-bold text-white flex items-center gap-2">
-                      <Music className="w-5 h-5 text-brand-orange" />
-                      가사 (Lyrics)
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {/* English Lyrics Section */}
+                <div className="aspect-square bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col group/lyrics">
+                  <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
+                    <h3 className="font-bold text-white flex items-center gap-2 text-sm">
+                      <Music className="w-4 h-4 text-brand-orange" />
+                      English Lyrics
                     </h3>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => copyToClipboard(result.lyrics.english, 'lyrics-en')}
-                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-400 hover:text-white transition-all flex items-center gap-2"
-                      >
-                        {copiedType === 'lyrics-en' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                        ENG
-                      </button>
-                      <button
-                        onClick={() => copyToClipboard(result.lyrics.korean, 'lyrics-ko')}
-                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-400 hover:text-white transition-all flex items-center gap-2"
-                      >
-                        {copiedType === 'lyrics-ko' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                        KOR
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => copyToClipboard(result.lyrics.english, 'lyrics-en')}
+                      onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-en', label: '영어 가사 복사', description: '영어 가사 전체를 복사합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                    >
+                      {copiedType === 'lyrics-en' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
                   </div>
-                  <div className="p-8 grid grid-cols-2 gap-4 md:gap-8 max-h-[600px] overflow-y-auto custom-scrollbar">
-                    <div className="space-y-6">
-                      <p className="text-[10px] md:text-xs font-bold text-brand-orange/50 uppercase tracking-widest">English</p>
-                      <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-[11px] md:text-sm">
-                        {result.lyrics.english}
-                      </pre>
-                    </div>
-                    <div className="space-y-6 border-l border-white/5 pl-4 md:pl-8">
-                      <p className="text-[10px] md:text-xs font-bold text-brand-orange/50 uppercase tracking-widest">Korean</p>
-                      <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-[11px] md:text-sm">
-                        {result.lyrics.korean}
-                      </pre>
-                    </div>
+                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center text-center">
+                    <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-[13px] md:text-sm w-full text-center">
+                      {result.lyrics.english}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Korean Lyrics Section */}
+                <div className="aspect-square bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col group/lyrics">
+                  <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
+                    <h3 className="font-bold text-white flex items-center gap-2 text-sm">
+                      <Music className="w-4 h-4 text-brand-orange" />
+                      Korean Lyrics
+                    </h3>
+                    <button
+                      onClick={() => copyToClipboard(result.lyrics.korean, 'lyrics-ko')}
+                      onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-ko', label: '한국어 가사 복사', description: '한국어 가사 전체를 복사합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                    >
+                      {copiedType === 'lyrics-ko' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center text-center">
+                    <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-[13px] md:text-sm w-full text-center">
+                      {result.lyrics.korean}
+                    </pre>
                   </div>
                 </div>
 
                 {/* Prompt Section */}
-                <div className="bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col">
-                  <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
-                    <h3 className="font-bold text-white flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-brand-orange" />
+                <div className="bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col lg:aspect-square">
+                  <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
+                    <h3 className="font-bold text-white flex items-center gap-2 text-sm">
+                      <Sparkles className="w-4 h-4 text-brand-orange" />
                       음악 프롬프트 (Prompt)
                     </h3>
                     <button
                       onClick={() => copyToClipboard(result.prompt, 'prompt')}
+                      onMouseEnter={() => setHoveredItem({ id: 'copy-prompt', label: '프롬프트 복사', description: '음악 생성 프롬프트를 복사합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
                       className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
                     >
-                      {copiedType === 'prompt' ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                      {copiedType === 'prompt' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="p-8 flex-1">
-                    <div className="bg-black/30 rounded-2xl p-6 border border-white/5">
-                      <p className="text-gray-400 leading-relaxed text-sm font-mono">
+                  <div className="p-8 flex-1 flex flex-col justify-center">
+                    <div className="bg-black/30 rounded-2xl p-6 border border-white/5 relative">
+                      <p className={cn(
+                        "text-gray-400 leading-relaxed text-sm font-mono transition-all duration-300",
+                        !isPromptExpanded && "line-clamp-4 lg:line-clamp-6"
+                      )}>
                         {result.prompt}
                       </p>
+                      <button
+                        onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                        onMouseEnter={() => setHoveredItem({ id: 'expand-prompt', label: isPromptExpanded ? '접기' : '전체 보기', description: isPromptExpanded ? '프롬프트를 줄입니다.' : '프롬프트 전체 내용을 확인합니다.' })}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        className="mt-4 flex items-center gap-2 text-xs font-bold text-brand-orange hover:text-orange-400 transition-colors"
+                      >
+                        {isPromptExpanded ? (
+                          <Minimize2 className="w-4 h-4" />
+                        ) : (
+                          <Maximize2 className="w-4 h-4" />
+                        )}
+                        {isPromptExpanded ? 'Show Less' : 'Show Full Prompt'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -626,6 +885,7 @@ export default function App() {
 
 interface CategorySectionProps {
   title: string;
+  description: string;
   items: CategoryItem[];
   selected: string[];
   pinned: string[];
@@ -634,10 +894,12 @@ interface CategorySectionProps {
   onClear: () => void;
   onUnpinAll: () => void;
   onHover: (item: CategoryItem | null) => void;
+  hoveredItem: CategoryItem | null;
 }
 
 function CategorySection({ 
   title, 
+  description,
   items, 
   selected, 
   pinned,
@@ -645,16 +907,38 @@ function CategorySection({
   onTogglePin,
   onClear, 
   onUnpinAll,
-  onHover
+  onHover,
+  hoveredItem
 }: CategorySectionProps) {
+  const [showTitleTooltip, setShowTitleTooltip] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
-    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full">
+    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full relative group">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-[20px] font-bold text-white flex items-center gap-2">
-          <span className="w-1.5 h-6 bg-brand-orange rounded-full" />
-          {title}
-          <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/6)</span>
-        </h3>
+        <div className="relative">
+          <h3 
+            onMouseEnter={() => setShowTitleTooltip(true)}
+            onMouseLeave={() => setShowTitleTooltip(false)}
+            className="text-[20px] font-bold text-white flex items-center gap-2 cursor-help"
+          >
+            <span className="w-1.5 h-6 bg-brand-orange rounded-full" />
+            {title}
+            <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/6)</span>
+          </h3>
+          <AnimatePresence>
+            {showTitleTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full left-0 mt-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none"
+              >
+                <p className="text-[11px] text-gray-300 leading-snug">{description}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={onUnpinAll}
@@ -665,14 +949,19 @@ function CategorySection({
           </button>
           <button 
             onClick={onClear}
-            title="Clear"
+            onMouseEnter={() => onHover({ id: 'clear', label: 'Clear all', description: '핀을 제외한 모든 선택 삭제' })}
+            onMouseLeave={() => onHover(null)}
             className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      
+      <div className={cn(
+        "flex flex-wrap gap-2 transition-all duration-500 overflow-hidden",
+        !isExpanded ? "max-h-[120px]" : "max-h-[1000px]"
+      )}>
         {items.map((item) => {
           const isPinned = pinned.includes(item.id);
           const isSelected = selected.includes(item.id);
@@ -693,6 +982,20 @@ function CategorySection({
                 {item.label}
               </button>
               
+              {/* Floating Description Tooltip */}
+              <AnimatePresence>
+                {hoveredItem?.id === item.id && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-40 pointer-events-none"
+                  >
+                    <p className="text-[10px] text-gray-300 text-center leading-tight">{item.description}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
               {/* Pin Toggle Button - Top Right Corner Only */}
               <button
                 onClick={(e) => {
@@ -712,6 +1015,194 @@ function CategorySection({
           );
         })}
       </div>
+
+      {/* Expand/Collapse Button */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-brand-orange transition-all border border-white/5 hover:border-brand-orange/30 group/expand"
+        >
+          <span className="text-[11px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface LyricsLengthControlProps {
+  value: LyricsLength;
+  onChange: (val: LyricsLength) => void;
+}
+
+function LyricsLengthControl({ value, onChange }: LyricsLengthControlProps) {
+  const [showTitleTooltip, setShowTitleTooltip] = useState(false);
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const options = [
+    { id: 'normal', label: '기본', description: '일반적인 팝 스타일의 가사 분량' },
+    { id: 'short', label: '짧게', description: '함축적이고 간결한 가사 (째즈/발라드 추천)' },
+    { id: 'long', label: '길게', description: '상세하고 많은 양의 가사 (랩/힙합/댄스 추천)' }
+  ];
+
+  return (
+    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5">
+      <div className="relative mb-6">
+        <h3 
+          onMouseEnter={() => setShowTitleTooltip(true)}
+          onMouseLeave={() => setShowTitleTooltip(false)}
+          className="text-[18px] font-bold text-white flex items-center gap-2 cursor-help"
+        >
+          <span className="w-1.5 h-5 bg-brand-orange rounded-full" />
+          가사 길이 (Lyrics Length)
+        </h3>
+        <AnimatePresence>
+          {showTitleTooltip && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-full left-0 mt-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none"
+            >
+              <p className="text-[11px] text-gray-300 leading-snug">가사의 전체적인 분량을 조절합니다.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className={cn(
+        "transition-all duration-500 overflow-hidden",
+        !isExpanded ? "max-h-[60px]" : "max-h-[200px]"
+      )}>
+        <div className="flex gap-2">
+          {options.map((opt) => (
+            <div key={opt.id} className="relative flex-1">
+              <button
+                onClick={() => onChange(opt.id as LyricsLength)}
+                onMouseEnter={() => setHoveredOption(opt.id)}
+                onMouseLeave={() => setHoveredOption(null)}
+                className={cn(
+                  "w-full py-3 rounded-xl text-sm font-bold transition-all border",
+                  value === opt.id
+                    ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
+                    : "bg-[#19191b] border-white/5 text-gray-500 hover:border-brand-orange/30 hover:text-gray-200"
+                )}
+              >
+                {opt.label}
+              </button>
+              <AnimatePresence>
+                {hoveredOption === opt.id && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute bottom-full left-0 right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl pointer-events-none"
+                  >
+                    <p className="text-[10px] text-gray-300 text-center">{opt.description}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Expand/Collapse Button */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-brand-orange transition-all border border-white/5 hover:border-brand-orange/30 group/expand"
+        >
+          <span className="text-[11px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface DrumStyleControlProps {
+  lyricsLength: LyricsLength;
+  value: DrumStyle;
+  onChange: (val: DrumStyle) => void;
+}
+
+function DrumStyleControl({ lyricsLength, value, onChange }: DrumStyleControlProps) {
+  const [showTitleTooltip, setShowTitleTooltip] = useState(false);
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+
+  const options = [
+    { id: 'none', label: '기본', description: '표준 드럼 비트를 사용합니다.', recommendation: '모든 가사 길이에 적합' },
+    { id: 'half-time', label: 'Half Time', description: '드럼 비트를 절반 속도로 연주하여 여유로운 느낌을 줍니다.', recommendation: '빠른템포' },
+    { id: 'double-time', label: 'Double Time', description: '드럼 비트를 2배 빠르게 연주하여 긴박감을 줍니다.', recommendation: '느린템포' }
+  ];
+
+  return (
+    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5">
+      <div className="relative mb-6">
+        <h3 
+          onMouseEnter={() => setShowTitleTooltip(true)}
+          onMouseLeave={() => setShowTitleTooltip(false)}
+          className="text-[18px] font-bold text-white flex items-center gap-2 cursor-help"
+        >
+          <span className="w-1.5 h-5 bg-brand-orange rounded-full" />
+          드럼 스타일 (Drum Style)
+        </h3>
+        <AnimatePresence>
+          {showTitleTooltip && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-full left-0 mt-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none"
+            >
+              <p className="text-[11px] text-gray-300 leading-snug">드럼의 연주 방식을 선택합니다.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="flex gap-2">
+        {options.map((opt) => (
+          <div key={opt.id} className="relative flex-1">
+            <button
+              onClick={() => onChange(opt.id as DrumStyle)}
+              onMouseEnter={() => setHoveredOption(opt.id)}
+              onMouseLeave={() => setHoveredOption(null)}
+              className={cn(
+                "w-full py-3 rounded-xl text-sm font-bold transition-all border",
+                value === opt.id
+                  ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
+                  : "bg-[#19191b] border-white/5 text-gray-500 hover:border-brand-orange/30 hover:text-gray-200"
+              )}
+            >
+              {opt.label}
+            </button>
+            <AnimatePresence>
+              {hoveredOption === opt.id && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full left-0 right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl pointer-events-none"
+                >
+                  <p className="text-[10px] text-gray-300 text-center mb-1">{opt.description}</p>
+                  <p className="text-[9px] text-brand-orange text-center font-bold">추천: {opt.recommendation}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -728,6 +1219,7 @@ interface TempoControlProps {
 function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxChange }: TempoControlProps) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
+  const [showTitleTooltip, setShowTitleTooltip] = useState(false);
 
   const handleStart = (type: 'min' | 'max') => {
     if (!enabled) return;
@@ -743,7 +1235,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
       const rect = sliderRef.current.getBoundingClientRect();
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const percent = x / rect.width;
-      const val = Math.round(60 + percent * (140 - 60));
+      const val = Math.round(40 + percent * (160 - 40));
 
       if (isDragging === 'min') {
         if (val <= max) onMinChange(val);
@@ -780,82 +1272,97 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
     };
   }, [isDragging, min, max, onMinChange, onMaxChange]);
 
-  const minPos = ((min - 60) / (140 - 60)) * 100;
-  const maxPos = ((max - 60) / (140 - 60)) * 100;
-  const isValid = (max - min <= 10) && (min !== 60 || max !== 140);
+  const minPos = ((min - 40) / (160 - 40)) * 100;
+  const maxPos = ((max - 40) / (160 - 40)) * 100;
+  const isValid = (max - min <= 20) && (min !== 40 || max !== 160);
 
   return (
     <div className={cn(
-      "bg-zinc-900/40 rounded-3xl p-6 border border-white/5 transition-all",
+      "bg-zinc-900/40 rounded-3xl px-6 py-4 border border-white/5 transition-all",
       !enabled && "opacity-50 grayscale-[0.5]"
     )}>
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center">
-              <input 
-                type="checkbox" 
-                id="tempo-toggle"
-                checked={enabled}
-                onChange={(e) => onEnabledChange(e.target.checked)}
-                className="w-5 h-5 rounded border-2 border-brand-orange bg-zinc-800 text-brand-orange focus:ring-brand-orange transition-all cursor-pointer appearance-none checked:bg-zinc-800 checked:border-brand-orange"
-              />
-              {enabled && (
-                <Check className="w-3.5 h-3.5 text-brand-orange absolute left-0.5 pointer-events-none" strokeWidth={4} />
-              )}
-            </div>
-            <label htmlFor="tempo-toggle" className="text-[18px] font-bold text-white cursor-pointer select-none">
-              Tempo (BPM)
-            </label>
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative flex items-center gap-3">
+          <h3 
+            onMouseEnter={() => setShowTitleTooltip(true)}
+            onMouseLeave={() => setShowTitleTooltip(false)}
+            className="text-[18px] font-bold text-white flex items-center gap-2 cursor-help"
+          >
+            <span className="w-1.5 h-5 bg-brand-orange rounded-full" />
+            템포 (Tempo BPM)
+          </h3>
+          <div className="relative flex items-center justify-center">
+            <input 
+              type="checkbox" 
+              id="tempo-toggle"
+              checked={enabled}
+              onChange={(e) => onEnabledChange(e.target.checked)}
+              className="w-5 h-5 rounded border-2 border-brand-orange bg-zinc-800 text-brand-orange focus:ring-brand-orange transition-all cursor-pointer appearance-none checked:bg-zinc-800 checked:border-brand-orange"
+            />
+            {enabled && (
+              <Check className="w-3.5 h-3.5 text-brand-orange absolute left-0.5 pointer-events-none" strokeWidth={4} />
+            )}
           </div>
+          <AnimatePresence>
+            {showTitleTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full left-0 mt-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none"
+              >
+                <p className="text-[11px] text-gray-300 leading-snug">곡의 빠르기를 BPM 단위로 조절합니다.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
           
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800/80 rounded-lg border border-white/10 shadow-inner">
-            <input
-              type="number"
-              min={60}
-              max={max}
-              value={min}
-              disabled={!enabled}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (!isNaN(val)) {
-                  const clamped = Math.max(60, Math.min(val, max));
-                  onMinChange(clamped);
-                }
-              }}
-              className="w-8 bg-transparent text-cyan-400 font-mono font-bold text-base focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <span className="text-gray-600 font-bold text-sm">-</span>
-            <input
-              type="number"
-              min={min}
-              max={140}
-              value={max}
-              disabled={!enabled}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (!isNaN(val)) {
-                  const clamped = Math.max(min, Math.min(val, 140));
-                  onMaxChange(clamped);
-                }
-              }}
-              className="w-8 bg-transparent text-rose-400 font-mono font-bold text-base focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <span className="text-gray-500 text-[9px] uppercase font-bold tracking-tighter">bpm</span>
-          </div>
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800/80 rounded-lg border border-white/10 shadow-inner">
+          <input
+            type="number"
+            min={60}
+            max={max}
+            value={min}
+            disabled={!enabled}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (!isNaN(val)) {
+                const clamped = Math.max(40, Math.min(val, max));
+                onMinChange(clamped);
+              }
+            }}
+            className="w-8 bg-transparent text-cyan-400 font-mono font-bold text-base focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-gray-600 font-bold text-sm">-</span>
+          <input
+            type="number"
+            min={min}
+            max={160}
+            value={max}
+            disabled={!enabled}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (!isNaN(val)) {
+                const clamped = Math.max(min, Math.min(val, 160));
+                onMaxChange(clamped);
+              }
+            }}
+            className="w-8 bg-transparent text-rose-400 font-mono font-bold text-base focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-gray-500 text-[9px] uppercase font-bold tracking-tighter">bpm</span>
         </div>
       </div>
 
-      <div className="px-4 py-2 mb-4">
+      <div className="px-4 py-2">
         <div 
           ref={sliderRef}
-          className="relative h-2.5 bg-zinc-800 rounded-full cursor-pointer"
+          className="relative h-2 bg-zinc-800 rounded-full cursor-pointer"
           onClick={(e) => {
             if (!enabled) return;
             const rect = sliderRef.current!.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const percent = x / rect.width;
-            const val = Math.round(60 + percent * (140 - 60));
+            const val = Math.round(40 + percent * (160 - 40));
             
             // Snap to nearest handle but respect constraints
             if (Math.abs(val - min) < Math.abs(val - max)) {
@@ -879,7 +1386,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             onMouseDown={(e) => { e.stopPropagation(); handleStart('min'); }}
             onTouchStart={(e) => { e.stopPropagation(); handleStart('min'); }}
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
               enabled ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
               isDragging === 'min' && "scale-125 border-cyan-400"
             )}
@@ -893,7 +1400,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             onMouseDown={(e) => { e.stopPropagation(); handleStart('max'); }}
             onTouchStart={(e) => { e.stopPropagation(); handleStart('max'); }}
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
               enabled ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
               isDragging === 'max' && "scale-125 border-rose-400"
             )}
@@ -903,10 +1410,10 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
           </div>
         </div>
         
-        <div className="flex justify-between mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-          <span>60 BPM</span>
+        <div className="flex justify-between mt-3 text-[9px] font-bold text-gray-600 uppercase tracking-widest">
+          <span>40 BPM</span>
           <span>100 BPM</span>
-          <span>140 BPM</span>
+          <span>160 BPM</span>
         </div>
       </div>
 
@@ -914,16 +1421,16 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
       <div className="flex justify-center mt-2">
         {enabled ? (
           isValid ? (
-            <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">
-              <Check className="w-3.5 h-3.5" /> 템포 적용됨
+            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-emerald-400/10 px-3 py-0.5 rounded-full border border-emerald-400/20">
+              <Check className="w-3 h-3" /> 템포 적용됨
             </span>
           ) : (
-            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
-              {min === 60 && max === 140 ? "기본값 (랜덤 적용)" : "최소/최대 범위 10 이하일 때 적용"}
+            <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider bg-white/5 px-3 py-0.5 rounded-full border border-white/5">
+              {min === 40 && max === 160 ? "기본값 (랜덤 적용)" : "범위 20 이하일 때 적용"}
             </span>
           )
         ) : (
-          <span className="text-gray-600 text-xs font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
+          <span className="text-gray-600 text-[10px] font-bold uppercase tracking-wider bg-white/5 px-3 py-0.5 rounded-full border border-white/5">
             템포 기능 비활성화
           </span>
         )}
