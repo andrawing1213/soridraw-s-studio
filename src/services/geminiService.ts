@@ -11,7 +11,8 @@ export async function generateSong(
   userInput: string,
   lyricsLength: LyricsLength = 'normal',
   drumStyle: DrumStyle = 'none',
-  tempo?: string
+  tempo?: string,
+  specialPrompt?: string
 ): Promise<SongResult> {
   const model = "gemini-3-flash-preview";
   
@@ -53,6 +54,7 @@ export async function generateSong(
     - CRITICAL: When providing Korean titles and lyrics, do NOT translate English literally. Instead, capture the lyrical and poetic essence of the song to make it feel natural, emotionally resonant, and beautiful in Korean. The Korean lyrics should read like a standalone poem or song.
     
     Rules for Prompt:
+    ${specialPrompt ? `- SPECIAL GENRE INSTRUCTION: ${specialPrompt}` : ""}
     - Use the provided base prompts ONLY if the selected genres are EXCLUSIVELY from this specific list: ['Indie', 'Folk', 'RnB', 'Groovy', 'Acoustic'].
     - At least TWO genres from this specific list must be selected to use the base prompts.
     - If ANY other genre (e.g., Techno, K-Pop, Metal, etc.) is included in the selection, do NOT use the base prompts, even if the above conditions are met.

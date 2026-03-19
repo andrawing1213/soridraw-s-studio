@@ -40,7 +40,7 @@ export default function App() {
   const [pinnedGenres, setPinnedGenres] = useState<string[]>([]);
   const [pinnedMoods, setPinnedMoods] = useState<string[]>([]);
   const [pinnedThemes, setPinnedThemes] = useState<string[]>([]);
-  const [tempoEnabled, setTempoEnabled] = useState(false);
+  const [tempoEnabled, setTempoEnabled] = useState(true);
   const [minBPM, setMinBPM] = useState(70);
   const [maxBPM, setMaxBPM] = useState(90);
   const [userInput, setUserInput] = useState('');
@@ -51,7 +51,6 @@ export default function App() {
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<CategoryItem | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load history from localStorage
@@ -87,6 +86,8 @@ export default function App() {
     }
   }, [hoveredItem]);
 
+  const TROT_GENRES = ['traditional-trot', 'semi-trot'];
+
   const toggleSelection = (id: string, category: 'genre' | 'mood' | 'theme') => {
     const setters = {
       genre: { state: selectedGenres, set: setSelectedGenres, pinned: pinnedGenres },
@@ -103,6 +104,23 @@ export default function App() {
       set(state.filter(i => i !== id));
     } else if (state.length < 6) {
       set([...state, id]);
+      
+      // Trot Logic: Auto-select moods
+      if (category === 'genre') {
+        if (id === 'traditional-trot') {
+          const moodsToAdd = ['melancholic', 'nostalgic', 'bittersweet', 'loneliness', 'emotional', 'cinematic'];
+          setSelectedMoods(prev => {
+            const combined = Array.from(new Set([...prev, ...moodsToAdd]));
+            return combined.slice(0, 6);
+          });
+        } else if (id === 'semi-trot') {
+          const moodsToAdd = ['urban', 'infectious', 'groovy', 'upbeat', 'cheerful', 'bright'];
+          setSelectedMoods(prev => {
+            const combined = Array.from(new Set([...prev, ...moodsToAdd]));
+            return combined.slice(0, 6);
+          });
+        }
+      }
     }
   };
 
@@ -152,9 +170,12 @@ export default function App() {
   };
 
   const applyRandom = () => {
-    const getRandomForCategory = (all: CategoryItem[], pinned: string[], maxTotal: number) => {
+    const getRandomForCategory = (all: CategoryItem[], pinned: string[], maxTotal: number, isGenre: boolean = false) => {
       const result = [...pinned];
-      const remainingPool = all.filter(item => !pinned.includes(item.id));
+      const remainingPool = all.filter(item => 
+        !pinned.includes(item.id) && 
+        (!isGenre || !TROT_GENRES.includes(item.id))
+      );
       
       // Decide how many more to add (up to maxTotal)
       const currentCount = pinned.length;
@@ -165,7 +186,7 @@ export default function App() {
     };
 
     // Random button logic: Max 3 per category, total 5-10
-    let g = getRandomForCategory(GENRES, pinnedGenres, 3);
+    let g = getRandomForCategory(GENRES, pinnedGenres, 3, true);
     let m = getRandomForCategory(MOODS, pinnedMoods, 3);
     let t = getRandomForCategory(THEMES, pinnedThemes, 3);
     
@@ -260,7 +281,7 @@ export default function App() {
       // If nothing selected, pick random (5-10 total)
       else if (selectedCount === 0) {
         const allItems = [
-          ...GENRES.map(i => ({ ...i, cat: 'genre' })),
+          ...GENRES.filter(i => !TROT_GENRES.includes(i.id)).map(i => ({ ...i, cat: 'genre' })),
           ...MOODS.map(i => ({ ...i, cat: 'mood' })),
           ...THEMES.map(i => ({ ...i, cat: 'theme' }))
         ];
@@ -279,6 +300,14 @@ export default function App() {
         ? (minBPM === maxBPM ? `Exactly ${minBPM} BPM` : `Between ${minBPM} and ${maxBPM} BPM`)
         : undefined;
 
+      // Trot Specific Prompt Logic
+      let specialPrompt = "";
+      if (finalGenres.includes('traditional-trot')) {
+        specialPrompt = "Heartbreaking / Sorrowful, Deep Vibrato, Crying Vocal style, Accordion-led, Nostalgic / Yearning.";
+      } else if (finalGenres.includes('semi-trot')) {
+        specialPrompt = "Infectious Rhythm, Upbeat & Cheerful, Driving 2-beat / 4-beat, Bright Brass section, Festive / Celebratory.";
+      }
+
       const song = await generateSong(
         finalGenres.map(id => GENRES.find(g => g.id === id)?.label || id),
         finalMoods.map(id => MOODS.find(m => m.id === id)?.label || id),
@@ -286,7 +315,8 @@ export default function App() {
         userInput,
         lyricsLength,
         drumStyle,
-        tempoInfo
+        tempoInfo,
+        specialPrompt
       );
 
       // Check if aborted before updating state
@@ -300,7 +330,6 @@ export default function App() {
       setResult(newResult);
       setHistory(prev => [newResult, ...prev].slice(0, 5)); // Keep last 5
       setHistoryIndex(0);
-      setIsPromptExpanded(false);
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Generation cancelled');
@@ -318,12 +347,10 @@ export default function App() {
       const newIndex = historyIndex + 1;
       setHistoryIndex(newIndex);
       setResult(history[newIndex]);
-      setIsPromptExpanded(false);
     } else if (direction === 'next' && historyIndex > 0) {
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
       setResult(history[newIndex]);
-      setIsPromptExpanded(false);
     }
   };
 
@@ -390,9 +417,9 @@ ${result.prompt}
         </p>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-12 space-y-12">
+      <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         {/* Selection Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <CategorySection 
             title="장르" 
             description="곡의 전반적인 음악 스타일을 결정합니다. (프롬프트에 영향)"
@@ -435,7 +462,7 @@ ${result.prompt}
         </div>
 
         {/* Lyrics Length & Drum Style Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <LyricsLengthControl 
             value={lyricsLength}
             onChange={setLyricsLength}
@@ -448,7 +475,7 @@ ${result.prompt}
         </div>
 
         {/* Tempo Control Bar */}
-        <div className="mb-10">
+        <div className="mb-4">
           <TempoControl 
             enabled={tempoEnabled}
             onEnabledChange={setTempoEnabled}
@@ -460,7 +487,7 @@ ${result.prompt}
         </div>
 
         {/* Search & Actions */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="relative group">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
               <Search className="w-5 h-5 text-gray-400 group-focus-within:text-brand-orange transition-colors" />
@@ -632,27 +659,21 @@ ${result.prompt}
                   onClick={copyAll}
                   onMouseEnter={() => setHoveredItem({ id: 'copy-all', label: '전체 복사', description: '키워드, 제목, 가사, 프롬프트를 한 번에 복사합니다.' })}
                   onMouseLeave={() => setHoveredItem(null)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange text-sm font-bold transition-all border border-brand-orange/20"
+                  className="p-2.5 rounded-xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/20 shadow-lg shadow-brand-orange/5"
                 >
                   {copiedType === 'all' ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Copied All!
-                    </>
+                    <Check className="w-6 h-6" />
                   ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy All Details
-                    </>
+                    <Copy className="w-6 h-6" />
                   )}
                 </button>
               </div>
 
               {/* Applied Keywords After Generation */}
-              <div className="bg-zinc-900/50 rounded-2xl p-4 border border-white/5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <Check className="w-4 h-4 text-brand-orange" />
+              <div className="bg-zinc-900/50 rounded-2xl p-3 border border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <Check className="w-3 h-3 text-brand-orange" />
                     적용된 키워드 (Applied Keywords)
                   </h3>
                   <button
@@ -673,11 +694,11 @@ ${result.prompt}
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {(['genre', 'mood', 'theme'] as const).map((cat) => (
-                    <div key={cat} className="space-y-1.5 group/cat">
+                    <div key={cat} className="space-y-1 group/cat">
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">{cat}</p>
+                        <p className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">{cat}</p>
                         <button
                           onClick={() => copyToClipboard(result.appliedKeywords[cat].join(', '), `kw-${cat}`)}
                           className="opacity-0 group-hover/cat:opacity-100 transition-opacity p-1 rounded hover:bg-white/5 text-gray-600 hover:text-gray-400"
@@ -706,8 +727,8 @@ ${result.prompt}
                     </div>
                   ))}
                   {result.appliedKeywords.tempo && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">tempo</p>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">tempo</p>
                       <div className="flex flex-wrap gap-1">
                         <span className="px-2 py-0.5 rounded-md text-[11px] bg-zinc-800 text-gray-400 border border-white/5">
                           {result.appliedKeywords.tempo}
@@ -719,7 +740,7 @@ ${result.prompt}
               </div>
 
               {/* Title Card */}
-              <div className="bg-zinc-900 rounded-3xl p-8 border border-white/10 shadow-2xl relative overflow-hidden group">
+              <div className="bg-zinc-900 rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4">
                   <button
                     onClick={() => copyToClipboard(result.title, 'title')}
@@ -731,14 +752,17 @@ ${result.prompt}
                   </button>
                 </div>
                 <div className="space-y-2">
-                  <span className="text-brand-orange font-mono text-sm tracking-widest uppercase">Generated Song</span>
+                  <div className="flex items-center gap-2 text-brand-orange font-mono text-sm tracking-widest uppercase font-bold">
+                    <Music className="w-4 h-4" />
+                    제목 (Title)
+                  </div>
                   <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
                     {result.title}
                   </h2>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* English Lyrics Section */}
                 <div className="aspect-square bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col group/lyrics">
                   <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
@@ -755,10 +779,12 @@ ${result.prompt}
                       {copiedType === 'lyrics-en' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center text-center">
+                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
+                    <div className="flex-1" />
                     <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-[13px] md:text-sm w-full text-center">
                       {result.lyrics.english}
                     </pre>
+                    <div className="flex-1" />
                   </div>
                 </div>
 
@@ -778,15 +804,17 @@ ${result.prompt}
                       {copiedType === 'lyrics-ko' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center text-center">
+                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
+                    <div className="flex-1" />
                     <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-[13px] md:text-sm w-full text-center">
                       {result.lyrics.korean}
                     </pre>
+                    <div className="flex-1" />
                   </div>
                 </div>
 
                 {/* Prompt Section */}
-                <div className="bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col lg:aspect-square">
+                <div className="bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col aspect-square">
                   <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
                     <h3 className="font-bold text-white flex items-center gap-2 text-sm">
                       <Sparkles className="w-4 h-4 text-brand-orange" />
@@ -801,28 +829,14 @@ ${result.prompt}
                       {copiedType === 'prompt' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="p-8 flex-1 flex flex-col justify-center">
-                    <div className="bg-black/30 rounded-2xl p-6 border border-white/5 relative">
-                      <p className={cn(
-                        "text-gray-400 leading-relaxed text-sm font-mono transition-all duration-300",
-                        !isPromptExpanded && "line-clamp-4 lg:line-clamp-6"
-                      )}>
+                  <div className="p-8 flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+                    <div className="flex-1" />
+                    <div className="bg-black/30 rounded-2xl p-6 border border-white/5">
+                      <p className="text-gray-400 leading-relaxed text-sm font-mono">
                         {result.prompt}
                       </p>
-                      <button
-                        onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-                        onMouseEnter={() => setHoveredItem({ id: 'expand-prompt', label: isPromptExpanded ? '접기' : '전체 보기', description: isPromptExpanded ? '프롬프트를 줄입니다.' : '프롬프트 전체 내용을 확인합니다.' })}
-                        onMouseLeave={() => setHoveredItem(null)}
-                        className="mt-4 flex items-center gap-2 text-xs font-bold text-brand-orange hover:text-orange-400 transition-colors"
-                      >
-                        {isPromptExpanded ? (
-                          <Minimize2 className="w-4 h-4" />
-                        ) : (
-                          <Maximize2 className="w-4 h-4" />
-                        )}
-                        {isPromptExpanded ? 'Show Less' : 'Show Full Prompt'}
-                      </button>
                     </div>
+                    <div className="flex-1" />
                   </div>
                 </div>
               </div>
@@ -959,8 +973,8 @@ function CategorySection({
       </div>
       
       <div className={cn(
-        "flex flex-wrap gap-2 transition-all duration-500 overflow-hidden",
-        !isExpanded ? "max-h-[120px]" : "max-h-[1000px]"
+        "flex flex-wrap gap-2 transition-all duration-500",
+        !isExpanded ? "max-h-[84px] overflow-hidden" : "max-h-[1000px] overflow-visible"
       )}>
         {items.map((item) => {
           const isPinned = pinned.includes(item.id);
@@ -1020,13 +1034,13 @@ function CategorySection({
       <div className="mt-4 flex justify-center">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-brand-orange transition-all border border-white/5 hover:border-brand-orange/30 group/expand"
+          className="flex items-center gap-2 px-6 py-2 rounded-full bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/30 hover:border-brand-orange/50 group/expand shadow-lg shadow-brand-orange/5"
         >
-          <span className="text-[11px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
+          <span className="text-[12px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
+            <ChevronUp className="w-5 h-5 group-hover/expand:scale-125 transition-transform" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
+            <ChevronDown className="w-5 h-5 group-hover/expand:scale-125 transition-transform" />
           )}
         </button>
       </div>
@@ -1042,7 +1056,6 @@ interface LyricsLengthControlProps {
 function LyricsLengthControl({ value, onChange }: LyricsLengthControlProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const options = [
     { id: 'normal', label: '기본', description: '일반적인 팝 스타일의 가사 분량' },
@@ -1075,56 +1088,36 @@ function LyricsLengthControl({ value, onChange }: LyricsLengthControlProps) {
         </AnimatePresence>
       </div>
 
-      <div className={cn(
-        "transition-all duration-500 overflow-hidden",
-        !isExpanded ? "max-h-[60px]" : "max-h-[200px]"
-      )}>
-        <div className="flex gap-2">
-          {options.map((opt) => (
-            <div key={opt.id} className="relative flex-1">
-              <button
-                onClick={() => onChange(opt.id as LyricsLength)}
-                onMouseEnter={() => setHoveredOption(opt.id)}
-                onMouseLeave={() => setHoveredOption(null)}
-                className={cn(
-                  "w-full py-3 rounded-xl text-sm font-bold transition-all border",
-                  value === opt.id
-                    ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
-                    : "bg-[#19191b] border-white/5 text-gray-500 hover:border-brand-orange/30 hover:text-gray-200"
-                )}
-              >
-                {opt.label}
-              </button>
-              <AnimatePresence>
-                {hoveredOption === opt.id && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute bottom-full left-0 right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl pointer-events-none"
-                  >
-                    <p className="text-[10px] text-gray-300 text-center">{opt.description}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Expand/Collapse Button */}
-      <div className="mt-4 flex justify-center">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-brand-orange transition-all border border-white/5 hover:border-brand-orange/30 group/expand"
-        >
-          <span className="text-[11px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-brand-orange group-hover/expand:scale-125 transition-transform" />
-          )}
-        </button>
+      <div className="flex gap-2">
+        {options.map((opt) => (
+          <div key={opt.id} className="relative flex-1">
+            <button
+              onClick={() => onChange(opt.id as LyricsLength)}
+              onMouseEnter={() => setHoveredOption(opt.id)}
+              onMouseLeave={() => setHoveredOption(null)}
+              className={cn(
+                "w-full py-3 rounded-xl text-sm font-bold transition-all border",
+                value === opt.id
+                  ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
+                  : "bg-[#19191b] border-white/5 text-gray-500 hover:border-brand-orange/30 hover:text-gray-200"
+              )}
+            >
+              {opt.label}
+            </button>
+            <AnimatePresence>
+              {hoveredOption === opt.id && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full left-0 right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl pointer-events-none"
+                >
+                  <p className="text-[10px] text-gray-300 text-center">{opt.description}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1222,7 +1215,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
 
   const handleStart = (type: 'min' | 'max') => {
-    if (!enabled) return;
+    if (enabled) return; // If random is enabled, slider is disabled
     setIsDragging(type);
     document.body.style.userSelect = 'none';
     document.body.style.overflow = 'hidden';
@@ -1278,8 +1271,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
 
   return (
     <div className={cn(
-      "bg-zinc-900/40 rounded-3xl px-6 py-4 border border-white/5 transition-all",
-      !enabled && "opacity-50 grayscale-[0.5]"
+      "bg-zinc-900/40 rounded-3xl px-6 py-4 border border-white/5 transition-all"
     )}>
       <div className="flex items-center justify-between mb-4">
         <div className="relative flex items-center gap-3">
@@ -1291,18 +1283,18 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             <span className="w-1.5 h-5 bg-brand-orange rounded-full" />
             템포 (Tempo BPM)
           </h3>
-          <div className="relative flex items-center justify-center">
-            <input 
-              type="checkbox" 
-              id="tempo-toggle"
-              checked={enabled}
-              onChange={(e) => onEnabledChange(e.target.checked)}
-              className="w-5 h-5 rounded border-2 border-brand-orange bg-zinc-800 text-brand-orange focus:ring-brand-orange transition-all cursor-pointer appearance-none checked:bg-zinc-800 checked:border-brand-orange"
-            />
-            {enabled && (
-              <Check className="w-3.5 h-3.5 text-brand-orange absolute left-0.5 pointer-events-none" strokeWidth={4} />
+          <button
+            onClick={() => onEnabledChange(!enabled)}
+            className={cn(
+              "px-4 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-2",
+              enabled 
+                ? "bg-brand-orange text-white border-brand-orange shadow-lg shadow-brand-orange/20" 
+                : "bg-zinc-800/50 text-gray-400 border-white/5 hover:border-brand-orange/30 hover:text-gray-200"
             )}
-          </div>
+          >
+            <Sparkles className={cn("w-3.5 h-3.5", enabled && "animate-pulse")} />
+            랜덤
+          </button>
           <AnimatePresence>
             {showTitleTooltip && (
               <motion.div
@@ -1317,13 +1309,16 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
           </AnimatePresence>
         </div>
           
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800/80 rounded-lg border border-white/10 shadow-inner">
+        <div className={cn(
+          "flex items-center gap-1.5 px-2 py-1 bg-zinc-800/80 rounded-lg border border-white/10 shadow-inner transition-opacity",
+          enabled && "opacity-30 pointer-events-none"
+        )}>
           <input
             type="number"
             min={60}
             max={max}
             value={min}
-            disabled={!enabled}
+            disabled={enabled}
             onChange={(e) => {
               const val = parseInt(e.target.value);
               if (!isNaN(val)) {
@@ -1339,7 +1334,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             min={min}
             max={160}
             value={max}
-            disabled={!enabled}
+            disabled={enabled}
             onChange={(e) => {
               const val = parseInt(e.target.value);
               if (!isNaN(val)) {
@@ -1353,12 +1348,15 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
         </div>
       </div>
 
-      <div className="px-4 py-2">
+      <div className={cn(
+        "px-4 py-2 transition-opacity",
+        enabled && "opacity-30 pointer-events-none"
+      )}>
         <div 
           ref={sliderRef}
           className="relative h-2 bg-zinc-800 rounded-full cursor-pointer"
           onClick={(e) => {
-            if (!enabled) return;
+            if (enabled) return;
             const rect = sliderRef.current!.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const percent = x / rect.width;
@@ -1376,7 +1374,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
           <div 
             className={cn(
               "absolute h-full rounded-full transition-colors",
-              enabled ? (isValid ? "bg-brand-orange" : "bg-zinc-600") : "bg-zinc-700"
+              !enabled ? (isValid ? "bg-brand-orange" : "bg-zinc-600") : "bg-zinc-700"
             )}
             style={{ left: `${minPos}%`, width: `${maxPos - minPos}%` }}
           />
@@ -1387,7 +1385,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             onTouchStart={(e) => { e.stopPropagation(); handleStart('min'); }}
             className={cn(
               "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
-              enabled ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
+              !enabled ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
               isDragging === 'min' && "scale-125 border-cyan-400"
             )}
             style={{ left: `${minPos}%` }}
@@ -1401,7 +1399,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             onTouchStart={(e) => { e.stopPropagation(); handleStart('max'); }}
             className={cn(
               "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none",
-              enabled ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
+              !enabled ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
               isDragging === 'max' && "scale-125 border-rose-400"
             )}
             style={{ left: `${maxPos}%` }}
@@ -1420,19 +1418,19 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
       {/* Status Guidance Text - Repositioned to Bottom Center */}
       <div className="flex justify-center mt-2">
         {enabled ? (
+          <span className="text-brand-orange text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-brand-orange/10 px-3 py-0.5 rounded-full border border-brand-orange/20">
+            <Sparkles className="w-3 h-3 animate-pulse" /> 랜덤 템포 적용됨
+          </span>
+        ) : (
           isValid ? (
             <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-emerald-400/10 px-3 py-0.5 rounded-full border border-emerald-400/20">
-              <Check className="w-3 h-3" /> 템포 적용됨
+              <Check className="w-3 h-3" /> 템포 지정됨
             </span>
           ) : (
             <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider bg-white/5 px-3 py-0.5 rounded-full border border-white/5">
-              {min === 40 && max === 160 ? "기본값 (랜덤 적용)" : "범위 20 이하일 때 적용"}
+              범위 20 이하일 때 적용
             </span>
           )
-        ) : (
-          <span className="text-gray-600 text-[10px] font-bold uppercase tracking-wider bg-white/5 px-3 py-0.5 rounded-full border border-white/5">
-            템포 기능 비활성화
-          </span>
         )}
       </div>
     </div>
