@@ -265,6 +265,33 @@ export default function App() {
     setSelectedThemes(pinnedThemes);
     setUserInput('');
     setResult(null);
+    setLyricsLength('normal');
+    setDrumStyle('none');
+    setSelectedGenders([]);
+  };
+
+  const deleteHistoryItem = (index: number) => {
+    const newHistory = history.filter((_, i) => i !== index);
+    setHistory(newHistory);
+    localStorage.setItem('soridraw_history', JSON.stringify(newHistory));
+    
+    if (newHistory.length === 0) {
+      setResult(null);
+      setHistoryIndex(-1);
+    } else {
+      const nextIndex = Math.min(index, newHistory.length - 1);
+      setHistoryIndex(nextIndex);
+      setResult(newHistory[nextIndex]);
+    }
+  };
+
+  const clearHistory = () => {
+    if (window.confirm('모든 히스토리를 삭제하시겠습니까?')) {
+      setHistory([]);
+      localStorage.removeItem('soridraw_history');
+      setResult(null);
+      setHistoryIndex(-1);
+    }
   };
 
   const unpinAll = (category: 'genre' | 'mood' | 'theme') => {
@@ -751,27 +778,27 @@ ${result.prompt}
               className="space-y-8 pt-12 border-t border-white/5"
             >
               {/* History Navigation & Copy All */}
-              <div className="flex items-center justify-between bg-zinc-900/30 rounded-2xl p-4 border border-white/5">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col md:flex-row items-center justify-between bg-zinc-900/40 rounded-3xl p-6 border border-white/10 gap-6">
+                <div className="flex flex-wrap items-center gap-6">
                   <div 
-                    className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-lg border border-white/10 cursor-help relative group/hist"
+                    className="flex items-center gap-3 px-4 py-2 bg-zinc-800 rounded-xl border border-white/10 cursor-help relative group/hist"
                     onMouseEnter={() => setHoveredItem({ id: 'history-info', label: 'History', description: '최근 생성한 곡을 최대 5곡까지 다시 볼 수 있습니다.' })}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
-                    <History className="w-4 h-4 text-brand-orange" />
-                    <span className="text-xs font-bold text-gray-400">History</span>
+                    <History className="w-5 h-5 text-brand-orange" />
+                    <span className="text-sm font-bold text-gray-300">History</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => navigateHistory('prev')}
                       disabled={historyIndex >= history.length - 1}
                       onMouseEnter={() => setHoveredItem({ id: 'hist-prev', label: '이전 곡', description: '이전에 생성한 곡으로 이동합니다.' })}
                       onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-lg hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="p-3 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
                     >
-                      <ArrowLeft className="w-5 h-5" />
+                      <ArrowLeft className="w-6 h-6" />
                     </button>
-                    <span className="text-sm font-mono text-gray-500">
+                    <span className="text-lg font-mono font-bold text-gray-400 min-w-[60px] text-center">
                       {historyIndex + 1} / {history.length}
                     </span>
                     <button
@@ -779,31 +806,52 @@ ${result.prompt}
                       disabled={historyIndex <= 0}
                       onMouseEnter={() => setHoveredItem({ id: 'hist-next', label: '다음 곡', description: '다음에 생성한 곡으로 이동합니다.' })}
                       onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-lg hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="p-3 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
                     >
-                      <ArrowRight className="w-5 h-5" />
+                      <ArrowRight className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => deleteHistoryItem(historyIndex)}
+                      onMouseEnter={() => setHoveredItem({ id: 'delete-hist', label: '현재 히스토리 삭제', description: '현재 보고 있는 히스토리 항목을 삭제합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all border border-red-500/20"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={clearHistory}
+                      onMouseEnter={() => setHoveredItem({ id: 'clear-hist', label: '전체 히스토리 삭제', description: '모든 히스토리 항목을 삭제합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-400 text-xs font-bold transition-all border border-white/5"
+                    >
+                      Clear All History
                     </button>
                   </div>
                 </div>
+                
                 <button
                   onClick={copyAll}
                   onMouseEnter={() => setHoveredItem({ id: 'copy-all', label: '전체 복사', description: '키워드, 제목, 가사, 프롬프트를 한 번에 복사합니다.' })}
                   onMouseLeave={() => setHoveredItem(null)}
-                  className="p-2.5 rounded-xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/20 shadow-lg shadow-brand-orange/5"
+                  className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/20 shadow-lg shadow-brand-orange/5"
                 >
                   {copiedType === 'all' ? (
                     <Check className="w-6 h-6" />
                   ) : (
                     <Copy className="w-6 h-6" />
                   )}
+                  <span className="font-bold text-sm">곡 정보 Copy all</span>
                 </button>
               </div>
 
               {/* Applied Keywords After Generation */}
-              <div className="bg-zinc-900/50 rounded-2xl p-3 border border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <Check className="w-3 h-3 text-brand-orange" />
+              <div className="bg-zinc-900/50 rounded-2xl p-4 border border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <Check className="w-4 h-4 text-brand-orange" />
                     적용된 키워드 (Applied Keywords)
                   </h3>
                   <button
@@ -818,35 +866,35 @@ ${result.prompt}
                     }}
                     onMouseEnter={() => setHoveredItem({ id: 'copy-keywords', label: '키워드 복사', description: '적용된 모든 키워드를 복사합니다.' })}
                     onMouseLeave={() => setHoveredItem(null)}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                    className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
                   >
-                    {copiedType === 'keywords' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    {copiedType === 'keywords' ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {(['genre', 'mood', 'theme'] as const).map((cat) => (
-                    <div key={cat} className="space-y-1 group/cat">
+                    <div key={cat} className="space-y-2 group/cat">
                       <div className="flex items-center justify-between">
-                        <p className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">{cat}</p>
+                        <p className="text-xs font-bold text-gray-600 uppercase tracking-tighter">{cat}</p>
                         <button
                           onClick={() => copyToClipboard(result.appliedKeywords[cat].join(', '), `kw-${cat}`)}
-                          className="opacity-0 group-hover/cat:opacity-100 transition-opacity p-1 rounded hover:bg-white/5 text-gray-600 hover:text-gray-400"
+                          className="opacity-0 group-hover/cat:opacity-100 transition-opacity p-1.5 rounded hover:bg-white/5 text-gray-600 hover:text-gray-400"
                         >
-                          {copiedType === `kw-${cat}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                          {copiedType === `kw-${cat}` ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-2">
                         {result.appliedKeywords[cat].map((kw, idx) => {
                           const isRandom = result.randomKeywords?.includes(kw);
                           return (
                             <span 
                               key={idx} 
                               className={cn(
-                                "px-2 py-0.5 rounded-md text-[11px] transition-all",
+                                "px-3 py-1 rounded-lg text-sm transition-all",
                                 isRandom 
                                   ? "bg-brand-orange/20 text-brand-orange font-bold border border-brand-orange/30" 
-                                  : "bg-zinc-800 text-gray-400 border border-white/5"
+                                  : "bg-zinc-800 text-gray-300 border border-white/5"
                               )}
                             >
                               {kw}
@@ -857,10 +905,10 @@ ${result.prompt}
                     </div>
                   ))}
                   {result.appliedKeywords.tempo && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">tempo</p>
-                      <div className="flex flex-wrap gap-1">
-                        <span className="px-2 py-0.5 rounded-md text-[11px] bg-zinc-800 text-gray-400 border border-white/5">
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-gray-600 uppercase tracking-tighter">tempo</p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1 rounded-lg text-sm bg-zinc-800 text-gray-300 border border-white/5">
                           {result.appliedKeywords.tempo}
                         </span>
                       </div>
@@ -911,7 +959,7 @@ ${result.prompt}
                   </div>
                   <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
                     <div className="flex-1" />
-                    <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-[13px] md:text-sm w-full text-center">
+                    <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-sm md:text-base w-full text-center">
                       {result.lyrics.english}
                     </pre>
                     <div className="flex-1" />
@@ -936,7 +984,7 @@ ${result.prompt}
                   </div>
                   <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
                     <div className="flex-1" />
-                    <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-[13px] md:text-sm w-full text-center">
+                    <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-sm md:text-base w-full text-center">
                       {result.lyrics.korean}
                     </pre>
                     <div className="flex-1" />
