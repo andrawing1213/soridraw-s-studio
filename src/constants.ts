@@ -24,6 +24,8 @@ export const GENRES: CategoryItem[] = [
   { id: 'rap', label: 'Rap', description: '강렬한 비트 위에 리드미컬한 가사 전달이 특징인 음악입니다.' },
   { id: 'techno', label: 'Techno', description: '반복적인 비트와 전자적인 사운드가 특징인 테크노 음악입니다.' },
   { id: 'kpop', label: 'K-Pop', description: '한국의 대중음악으로, 다양한 장르가 혼합된 세련된 사운드입니다.' },
+  { id: 'jpop', label: 'J-Pop', description: '일본의 대중음악으로, 특유의 멜로디 라인과 편곡이 특징입니다.' },
+  { id: 'guitar', label: 'Guitar', description: '기타 연주가 중심이 되는 어쿠스틱하거나 일렉트릭한 사운드입니다.' },
   { id: 'synth', label: 'Synth', description: '신시사이저 사운드가 주도하는 전자 음악입니다.' },
   { id: 'pop', label: 'Pop', description: '대중적이고 캐치한 멜로디의 현대적인 음악입니다.' },
   { id: 'electronic', label: 'Electronic', description: '전자 악기와 기술을 활용한 현대적인 사운드입니다.' },

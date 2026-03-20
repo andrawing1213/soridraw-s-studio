@@ -11,6 +11,7 @@ export async function generateSong(
   userInput: string,
   lyricsLength: LyricsLength = 'normal',
   drumStyle: DrumStyle = 'none',
+  vocalGender?: string,
   tempo?: string,
   specialPrompt?: string
 ): Promise<SongResult> {
@@ -64,6 +65,7 @@ export async function generateSong(
     - CRITICAL: The total song duration MUST be between 2 minutes 30 seconds and 3 minutes. NEVER exceed 3 minutes 20 seconds.
     - Ensure the song can be finished within 2 minutes 45 seconds if possible.
     - ${tempo ? `TEMPO CONSTRAINT: ${tempo}` : "Tempo should be appropriate for the genre and mood."}
+    - ${vocalGender ? `VOCAL GENDER: ${vocalGender}` : "Vocal gender should be appropriate for the genre and mood."}
     
     Keywords to use:
     Genres: ${genres.join(", ")}
@@ -100,7 +102,8 @@ export async function generateSong(
               genre: { type: Type.ARRAY, items: { type: Type.STRING } },
               mood: { type: Type.ARRAY, items: { type: Type.STRING } },
               theme: { type: Type.ARRAY, items: { type: Type.STRING } },
-              tempo: { type: Type.STRING }
+              tempo: { type: Type.STRING },
+              vocalGender: { type: Type.STRING }
             },
             required: ["genre", "mood", "theme"]
           }

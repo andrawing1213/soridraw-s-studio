@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GENRES, MOODS, THEMES } from './constants';
-import { CategoryItem, SongResult, LyricsLength, DrumStyle } from './types';
+import { CategoryItem, SongResult, LyricsLength, DrumStyle, VocalGender } from './types';
 import { generateSong } from './services/geminiService';
 
 function cn(...inputs: ClassValue[]) {
@@ -49,7 +49,9 @@ const GENRE_BPM: Record<string, { min: number; max: number }> = {
   'new-age': { min: 40, max: 80 },
   'country': { min: 85, max: 125 },
   'traditional-trot': { min: 60, max: 90 },
-  'semi-trot': { min: 120, max: 150 }
+  'semi-trot': { min: 120, max: 150 },
+  'jpop': { min: 115, max: 145 },
+  'guitar': { min: 70, max: 130 }
 };
 
 const MOOD_BPM: Record<string, { min: number; max: number }> = {
@@ -126,9 +128,13 @@ export default function App() {
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [lyricsLength, setLyricsLength] = useState<LyricsLength>('normal');
   const [drumStyle, setDrumStyle] = useState<DrumStyle>('none');
+  const [selectedGenders, setSelectedGenders] = useState<VocalGender[]>([]);
   const [pinnedGenres, setPinnedGenres] = useState<string[]>([]);
   const [pinnedMoods, setPinnedMoods] = useState<string[]>([]);
   const [pinnedThemes, setPinnedThemes] = useState<string[]>([]);
+  const [isGenreExpanded, setIsGenreExpanded] = useState(false);
+  const [isMoodExpanded, setIsMoodExpanded] = useState(false);
+  const [isThemeExpanded, setIsThemeExpanded] = useState(false);
   const [tempoEnabled, setTempoEnabled] = useState(true);
   const [minBPM, setMinBPM] = useState(70);
   const [maxBPM, setMaxBPM] = useState(90);
@@ -385,6 +391,15 @@ export default function App() {
         });
       }
 
+      let genderPrompt = "";
+      if (selectedGenders.length === 2) {
+        genderPrompt = "Duet (Male and Female)";
+      } else if (selectedGenders.includes('male')) {
+        genderPrompt = "Male Vocal";
+      } else if (selectedGenders.includes('female')) {
+        genderPrompt = "Female Vocal";
+      }
+
       let currentMinBPM = minBPM;
       let currentMaxBPM = maxBPM;
 
@@ -416,6 +431,7 @@ export default function App() {
         userInput,
         lyricsLength,
         drumStyle,
+        genderPrompt || undefined,
         tempoInfo,
         specialPrompt
       );
@@ -533,6 +549,9 @@ ${result.prompt}
             onUnpinAll={() => unpinAll('genre')}
             onHover={setHoveredItem}
             hoveredItem={hoveredItem}
+            isExpanded={isGenreExpanded}
+            onToggleExpand={() => setIsGenreExpanded(!isGenreExpanded)}
+            allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
           />
           <CategorySection 
             title="분위기" 
@@ -546,6 +565,9 @@ ${result.prompt}
             onUnpinAll={() => unpinAll('mood')}
             onHover={setHoveredItem}
             hoveredItem={hoveredItem}
+            isExpanded={isMoodExpanded}
+            onToggleExpand={() => setIsMoodExpanded(!isMoodExpanded)}
+            allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
           />
           <CategorySection 
             title="주제" 
@@ -559,11 +581,14 @@ ${result.prompt}
             onUnpinAll={() => unpinAll('theme')}
             onHover={setHoveredItem}
             hoveredItem={hoveredItem}
+            isExpanded={isThemeExpanded}
+            onToggleExpand={() => setIsThemeExpanded(!isThemeExpanded)}
+            allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
           />
         </div>
 
-        {/* Lyrics Length & Drum Style Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Lyrics Length & Drum Style & Vocal Gender Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <LyricsLengthControl 
             value={lyricsLength}
             onChange={setLyricsLength}
@@ -572,6 +597,10 @@ ${result.prompt}
             lyricsLength={lyricsLength}
             value={drumStyle}
             onChange={setDrumStyle}
+          />
+          <VocalGenderControl
+            value={selectedGenders}
+            onChange={setSelectedGenders}
           />
         </div>
 
@@ -1010,6 +1039,9 @@ interface CategorySectionProps {
   onUnpinAll: () => void;
   onHover: (item: CategoryItem | null) => void;
   hoveredItem: CategoryItem | null;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  allExpanded: boolean;
 }
 
 function CategorySection({ 
@@ -1023,10 +1055,12 @@ function CategorySection({
   onClear, 
   onUnpinAll,
   onHover,
-  hoveredItem
+  hoveredItem,
+  isExpanded,
+  onToggleExpand,
+  allExpanded
 }: CategorySectionProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full relative group">
@@ -1132,9 +1166,12 @@ function CategorySection({
       </div>
 
       {/* Expand/Collapse Button - mt-auto ensures they align at the bottom of the grid row */}
-      <div className="mt-auto pt-4 flex justify-center">
+      <div className={cn(
+        "pt-4 flex justify-center",
+        (isExpanded || allExpanded) ? "mt-auto" : ""
+      )}>
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={onToggleExpand}
           className="flex items-center gap-2 px-6 py-2 rounded-full bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/30 hover:border-brand-orange/50 group/expand shadow-lg shadow-brand-orange/5"
         >
           <span className="text-[12px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
@@ -1159,13 +1196,13 @@ function LyricsLengthControl({ value, onChange }: LyricsLengthControlProps) {
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   const options = [
-    { id: 'very-short', label: '더 짧게', description: '매우 간결하고 함축적인 가사 (2-3줄)' },
+    { id: 'normal', label: '기본', description: '일반적인 팝 스타일의 가사 분량' },
     { id: 'short', label: '짧게', description: '함축적이고 간결한 가사 (째즈/발라드 추천)' },
-    { id: 'normal', label: '기본', description: '일반적인 팝 스타일의 가사 분량' }
+    { id: 'very-short', label: '더 짧게', description: '매우 간결하고 함축적인 가사 (2-3줄)' }
   ];
 
   return (
-    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5">
+    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full">
       <div className="relative mb-6">
         <h3 
           onMouseEnter={() => setShowTitleTooltip(true)}
@@ -1189,7 +1226,7 @@ function LyricsLengthControl({ value, onChange }: LyricsLengthControlProps) {
         </AnimatePresence>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-auto">
         {options.map((opt) => (
           <div key={opt.id} className="relative flex-1">
             <button
@@ -1241,7 +1278,7 @@ function DrumStyleControl({ lyricsLength, value, onChange }: DrumStyleControlPro
   ];
 
   return (
-    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5">
+    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full">
       <div className="relative mb-6">
         <h3 
           onMouseEnter={() => setShowTitleTooltip(true)}
@@ -1265,7 +1302,7 @@ function DrumStyleControl({ lyricsLength, value, onChange }: DrumStyleControlPro
         </AnimatePresence>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-auto">
         {options.map((opt) => (
           <div key={opt.id} className="relative flex-1">
             <button
@@ -1291,6 +1328,88 @@ function DrumStyleControl({ lyricsLength, value, onChange }: DrumStyleControlPro
                 >
                   <p className="text-[10px] text-gray-300 text-center mb-1">{opt.description}</p>
                   <p className="text-[9px] text-brand-orange text-center font-bold">추천: {opt.recommendation}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface VocalGenderControlProps {
+  value: VocalGender[];
+  onChange: (val: VocalGender[]) => void;
+}
+
+function VocalGenderControl({ value, onChange }: VocalGenderControlProps) {
+  const [showTitleTooltip, setShowTitleTooltip] = useState(false);
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+
+  const options = [
+    { id: 'male', label: '남자', description: '남성 보컬을 적용합니다.' },
+    { id: 'female', label: '여자', description: '여성 보컬을 적용합니다.' }
+  ];
+
+  const toggleGender = (gender: VocalGender) => {
+    if (value.includes(gender)) {
+      onChange(value.filter(g => g !== gender));
+    } else {
+      onChange([...value, gender]);
+    }
+  };
+
+  return (
+    <div className="bg-zinc-900/40 rounded-3xl p-6 border border-white/5 flex flex-col h-full">
+      <div className="relative mb-6">
+        <h3 
+          onMouseEnter={() => setShowTitleTooltip(true)}
+          onMouseLeave={() => setShowTitleTooltip(false)}
+          className="text-[18px] font-bold text-white flex items-center gap-2 cursor-help"
+        >
+          <span className="w-1.5 h-5 bg-brand-orange rounded-full" />
+          가수 성별 (Vocal Gender)
+        </h3>
+        <AnimatePresence>
+          {showTitleTooltip && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-full left-0 mt-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-48 pointer-events-none"
+            >
+              <p className="text-[11px] text-gray-300 leading-snug">가수의 성별을 선택합니다. 둘 다 선택 시 듀엣이 적용됩니다.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="flex gap-2 mt-auto">
+        {options.map((opt) => (
+          <div key={opt.id} className="relative flex-1">
+            <button
+              onClick={() => toggleGender(opt.id as VocalGender)}
+              onMouseEnter={() => setHoveredOption(opt.id)}
+              onMouseLeave={() => setHoveredOption(null)}
+              className={cn(
+                "w-full py-3 rounded-xl text-sm font-bold transition-all border",
+                value.includes(opt.id as VocalGender)
+                  ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
+                  : "bg-[#19191b] border-white/5 text-gray-500 hover:border-brand-orange/30 hover:text-gray-200"
+              )}
+            >
+              {opt.label}
+            </button>
+            <AnimatePresence>
+              {hoveredOption === opt.id && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full left-0 right-0 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl pointer-events-none"
+                >
+                  <p className="text-[10px] text-gray-300 text-center">{opt.description}</p>
                 </motion.div>
               )}
             </AnimatePresence>

@@ -1,6 +1,7 @@
 export type Category = 'genre' | 'mood' | 'theme';
 export type LyricsLength = 'very-short' | 'short' | 'normal';
 export type DrumStyle = 'none' | 'half-time' | 'double-time';
+export type VocalGender = 'male' | 'female';
 
 export interface SongResult {
   title: string;
@@ -14,6 +15,7 @@ export interface SongResult {
     mood: string[];
     theme: string[];
     tempo?: string;
+    vocalGender?: string;
   };
   randomKeywords?: string[];
 }
