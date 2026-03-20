@@ -31,6 +31,95 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const TROT_GENRES = ['traditional-trot', 'semi-trot'];
+
+const GENRE_BPM: Record<string, { min: number; max: number }> = {
+  'ballad': { min: 60, max: 85 },
+  'pop': { min: 100, max: 130 },
+  'jazz': { min: 70, max: 120 },
+  'rnb': { min: 65, max: 95 },
+  'hip-hop': { min: 80, max: 110 },
+  'rock': { min: 110, max: 150 },
+  'metal': { min: 120, max: 160 },
+  'latin': { min: 95, max: 135 },
+  'dance': { min: 120, max: 140 },
+  'synth': { min: 105, max: 135 },
+  'electronic': { min: 115, max: 150 },
+  'piano': { min: 40, max: 90 },
+  'new-age': { min: 40, max: 80 },
+  'country': { min: 85, max: 125 },
+  'traditional-trot': { min: 60, max: 90 },
+  'semi-trot': { min: 120, max: 150 }
+};
+
+const MOOD_BPM: Record<string, { min: number; max: number }> = {
+  'cool': { min: 90, max: 120 },
+  'chill': { min: 60, max: 90 },
+  'calm': { min: 40, max: 75 },
+  'cheerful': { min: 110, max: 140 },
+  'cinematic': { min: 60, max: 140 },
+  'mellow': { min: 65, max: 95 },
+  'coziness': { min: 60, max: 85 },
+  'nostalgic': { min: 50, max: 85 },
+  'dreamy': { min: 55, max: 90 },
+  'romantic': { min: 60, max: 90 },
+  'peaceful': { min: 40, max: 75 },
+  'healing': { min: 40, max: 80 },
+  'bright': { min: 105, max: 135 },
+  'emotional': { min: 50, max: 90 },
+  'minimalist': { min: 70, max: 110 },
+  'melancholic': { min: 40, max: 70 },
+  'bittersweet': { min: 50, max: 85 },
+  'groovy': { min: 95, max: 125 },
+  'upbeat': { min: 120, max: 150 },
+  'funky': { min: 100, max: 130 },
+  'powerful': { min: 115, max: 155 },
+  'urban': { min: 90, max: 120 },
+  'sophisticated': { min: 80, max: 115 },
+  'atmospheric': { min: 60, max: 130 },
+  'moody': { min: 70, max: 100 },
+  'infectious': { min: 110, max: 140 },
+  'hypnotic': { min: 80, max: 130 },
+  'zen': { min: 40, max: 70 },
+  'loneliness': { min: 40, max: 75 }
+};
+
+const calculateOptimalBPM = (genres: string[], moods: string[]) => {
+  let sumMin = 0;
+  let sumMax = 0;
+  let count = 0;
+
+  genres.forEach(g => {
+    if (GENRE_BPM[g]) {
+      sumMin += GENRE_BPM[g].min;
+      sumMax += GENRE_BPM[g].max;
+      count++;
+    }
+  });
+
+  moods.forEach(m => {
+    if (MOOD_BPM[m]) {
+      sumMin += MOOD_BPM[m].min;
+      sumMax += MOOD_BPM[m].max;
+      count++;
+    }
+  });
+
+  if (count === 0) {
+    const base = Math.floor(Math.random() * (140 - 50 + 1)) + 50;
+    return { min: base, max: base + Math.floor(Math.random() * 21) };
+  }
+
+  let avgMin = Math.round(sumMin / count);
+  let avgMax = Math.round(sumMax / count);
+
+  const range = avgMax - avgMin;
+  const finalMin = Math.max(40, avgMin + Math.floor(Math.random() * (range / 2)));
+  const finalMax = Math.min(160, finalMin + Math.floor(Math.random() * (range / 2 + 5)));
+
+  return { min: finalMin, max: finalMax };
+};
+
 export default function App() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -85,8 +174,6 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [hoveredItem]);
-
-  const TROT_GENRES = ['traditional-trot', 'semi-trot'];
 
   const toggleSelection = (id: string, category: 'genre' | 'mood' | 'theme') => {
     const setters = {
@@ -232,18 +319,9 @@ export default function App() {
 
     // Random tempo logic
     if (tempoEnabled) {
-      const isRange = Math.random() > 0.5;
-      const baseBPM = Math.floor(Math.random() * (140 - 60 + 1)) + 60;
-      if (isRange) {
-        const range = Math.floor(Math.random() * 11); // 0 to 10
-        const newMin = Math.max(40, baseBPM - Math.floor(range / 2));
-        const newMax = Math.min(160, newMin + range);
-        setMinBPM(newMin);
-        setMaxBPM(newMax);
-      } else {
-        setMinBPM(baseBPM);
-        setMaxBPM(baseBPM);
-      }
+      const { min, max } = calculateOptimalBPM(g, m);
+      setMinBPM(min);
+      setMaxBPM(max);
     }
   };
 
@@ -307,8 +385,20 @@ export default function App() {
         });
       }
 
-      const tempoInfo = tempoEnabled && (minBPM !== 40 || maxBPM !== 160) && (maxBPM - minBPM <= 20)
-        ? (minBPM === maxBPM ? `Exactly ${minBPM} BPM` : `Between ${minBPM} and ${maxBPM} BPM`)
+      let currentMinBPM = minBPM;
+      let currentMaxBPM = maxBPM;
+
+      // Apply optimal BPM for random selection or when tempo random is enabled
+      if (tempoEnabled) {
+        const { min, max } = calculateOptimalBPM(finalGenres, finalMoods);
+        currentMinBPM = min;
+        currentMaxBPM = max;
+        setMinBPM(min);
+        setMaxBPM(max);
+      }
+
+      const tempoInfo = tempoEnabled && (currentMinBPM !== 40 || currentMaxBPM !== 160)
+        ? (currentMinBPM === currentMaxBPM ? `Exactly ${currentMinBPM} BPM` : `Between ${currentMinBPM} and ${currentMaxBPM} BPM`)
         : undefined;
 
       // Trot Specific Prompt Logic
@@ -1278,7 +1368,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
 
   const minPos = ((min - 40) / (160 - 40)) * 100;
   const maxPos = ((max - 40) / (160 - 40)) * 100;
-  const isValid = (max - min <= 20) && (min !== 40 || max !== 160);
+  const isValid = (max - min <= 40) && (min !== 40 || max !== 160);
 
   return (
     <div className={cn(
@@ -1326,7 +1416,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
         )}>
           <input
             type="number"
-            min={60}
+            min={40}
             max={max}
             value={min}
             disabled={enabled}
