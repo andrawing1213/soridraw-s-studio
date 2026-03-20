@@ -146,6 +146,7 @@ export default function App() {
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<CategoryItem | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [kpopMode, setKpopMode] = useState<0 | 1 | 2>(0); // 0: unselected, 1: basic, 2: mixed
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load history from localStorage
@@ -192,6 +193,35 @@ export default function App() {
     
     // If pinned, don't allow unselecting unless unpinned first
     if (pinned.includes(id)) return;
+
+    // K-Pop Special Logic
+    if (category === 'genre' && id === 'kpop') {
+      const nextMode = ((kpopMode + 1) % 3) as 0 | 1 | 2;
+      let canChange = true;
+      
+      if (nextMode !== 0 && !state.includes(id) && state.length >= 10) {
+        canChange = false;
+      }
+
+      if (canChange) {
+        setKpopMode(nextMode);
+        if (nextMode === 0) {
+          set(state.filter(i => i !== id));
+        } else if (!state.includes(id)) {
+          set([...state, id]);
+        }
+
+        // Update hover description if currently hovering
+        if (hoveredItem?.id === 'kpop') {
+          const kpopItem = GENRES.find(g => g.id === 'kpop')!;
+          let nextDesc = kpopItem.description;
+          if (nextMode === 1) nextDesc = "K-Pop (기본): 한국의 대중음악으로, 다양한 장르가 혼합된 세련된 사운드입니다.";
+          else if (nextMode === 2) nextDesc = "K-Pop (한글+영어): 한국어와 영어가 자연스럽게 섞인 K-Pop 스타일의 가사를 생성합니다.";
+          setHoveredItem({ ...kpopItem, description: nextDesc });
+        }
+      }
+      return;
+    }
 
     if (state.includes(id)) {
       set(state.filter(i => i !== id));
@@ -254,13 +284,17 @@ export default function App() {
   };
 
   const clearCategory = (category: 'genre' | 'mood' | 'theme') => {
-    if (category === 'genre') setSelectedGenres(pinnedGenres);
+    if (category === 'genre') {
+      setSelectedGenres(pinnedGenres);
+      if (!pinnedGenres.includes('kpop')) setKpopMode(0);
+    }
     if (category === 'mood') setSelectedMoods(pinnedMoods);
     if (category === 'theme') setSelectedThemes(pinnedThemes);
   };
 
   const clearAll = () => {
     setSelectedGenres(pinnedGenres);
+    if (!pinnedGenres.includes('kpop')) setKpopMode(0);
     setSelectedMoods(pinnedMoods);
     setSelectedThemes(pinnedThemes);
     setUserInput('');
@@ -460,7 +494,8 @@ export default function App() {
         drumStyle,
         genderPrompt || undefined,
         tempoInfo,
-        specialPrompt
+        specialPrompt,
+        kpopMode
       );
 
       // Check if aborted before updating state
@@ -579,6 +614,7 @@ ${result.prompt}
             isExpanded={isGenreExpanded}
             onToggleExpand={() => setIsGenreExpanded(!isGenreExpanded)}
             allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
+            kpopMode={kpopMode}
           />
           <CategorySection 
             title="분위기" 
@@ -1094,6 +1130,7 @@ interface CategorySectionProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   allExpanded: boolean;
+  kpopMode?: 0 | 1 | 2;
 }
 
 function CategorySection({ 
@@ -1110,7 +1147,8 @@ function CategorySection({
   hoveredItem,
   isExpanded,
   onToggleExpand,
-  allExpanded
+  allExpanded,
+  kpopMode = 0
 }: CategorySectionProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
 
@@ -1166,21 +1204,47 @@ function CategorySection({
         {items.map((item) => {
           const isPinned = pinned.includes(item.id);
           const isSelected = selected.includes(item.id);
+          const isKpop = item.id === 'kpop';
           
+          // K-Pop specific styles
+          let kpopStyle = "";
+          let displayLabel = item.label;
+          let displayDescription = item.description;
+
+          if (isKpop) {
+            if (kpopMode === 1) {
+              kpopStyle = "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20";
+              displayDescription = "K-Pop (기본): 한국의 대중음악으로, 다양한 장르가 혼합된 세련된 사운드입니다.";
+            } else if (kpopMode === 2) {
+              kpopStyle = "bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/20";
+              displayDescription = "K-Pop (한글+영어): 한국어와 영어가 자연스럽게 섞인 K-Pop 스타일의 가사를 생성합니다.";
+            } else {
+              kpopStyle = "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200";
+            }
+          }
+
           return (
             <div key={item.id} className="relative group/btn">
               <button
-                onMouseEnter={() => onHover(item)}
+                onMouseEnter={() => onHover({ ...item, description: displayDescription })}
                 onMouseLeave={() => onHover(null)}
                 onClick={() => onToggle(item.id)}
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-sm font-medium transition-all border flex items-center gap-2",
-                  isSelected
-                    ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
-                    : "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200"
+                  isKpop ? kpopStyle : (
+                    isSelected
+                      ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
+                      : "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200"
+                  )
                 )}
               >
-                {item.label}
+                {isKpop && kpopMode > 0 && (
+                  <span className={cn(
+                    "w-1.5 h-1.5 rounded-full",
+                    kpopMode === 1 ? "bg-white" : "bg-indigo-200"
+                  )} />
+                )}
+                {displayLabel}
               </button>
               
               {/* Floating Description Tooltip - Only show when expanded */}
@@ -1192,7 +1256,7 @@ function CategorySection({
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                     className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 px-3 py-2 rounded-xl bg-zinc-800 border border-brand-orange/30 shadow-2xl w-40 pointer-events-none"
                   >
-                    <p className="text-[10px] text-gray-300 text-center leading-tight">{item.description}</p>
+                    <p className="text-[10px] text-gray-300 text-center leading-tight">{hoveredItem.description}</p>
                   </motion.div>
                 )}
               </AnimatePresence>

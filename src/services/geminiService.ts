@@ -13,14 +13,31 @@ export async function generateSong(
   drumStyle: DrumStyle = 'none',
   vocalGender?: string,
   tempo?: string,
-  specialPrompt?: string
+  specialPrompt?: string,
+  kpopMode: 0 | 1 | 2 = 0
 ): Promise<SongResult> {
   const model = "gemini-3-flash-preview";
   
+  const kpopInstruction = kpopMode === 2 ? `
+    CRITICAL K-POP STYLE (Korean + English Mixed Version):
+    - For 'lyrics.korean': Generate K-Pop style lyrics that are primarily in Korean but naturally code-switch with English. 
+      - CONSTRAINT: English usage should be approximately 15-20% of the total song content.
+      - Mix in English at the end of sentences or for core keywords. Include English ad-libs (e.g., "(Yeah)", "(Uh-huh)", "(Wait)") in parentheses throughout.
+    - For 'lyrics.english': Generate K-Pop style lyrics that are primarily in English but naturally code-switch with Korean.
+      - CONSTRAINT: Korean usage should be approximately 25-30% of the total song content.
+      - Mix in Korean at the end of sentences or for core keywords. Include Korean ad-libs in parentheses throughout.
+    - The code-switching ratio does NOT need to be identical between the two versions.
+    - Ensure the code-switching feels natural and uses words relevant to the song's theme and user story.
+    - Incorporate English chorus lines and ad-libs to enhance the song's richness.
+    - If the song's mood, theme, and genre align with K-R&B or popular styles, apply sophisticated English rhymes at the end of lines.
+  ` : "";
+
   const systemInstruction = `
     You are a professional music composer and lyricist.
     Your task is to generate a song based on the provided genres, moods, themes, and user story.
     
+    ${kpopInstruction}
+
     Output Format:
     Return a JSON object with the following structure:
     {
