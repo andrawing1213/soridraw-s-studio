@@ -56,7 +56,7 @@ export async function generateSong(
     
     Rules for Prompt:
     ${specialPrompt ? `- SPECIAL GENRE INSTRUCTION: ${specialPrompt}` : ""}
-    - Use the provided base prompts ONLY if the selected genres are EXCLUSIVELY from this specific list: ['Indie', 'Folk', 'RnB', 'Groovy', 'Acoustic'].
+    - Use the provided base prompts ONLY if the selected genres are EXCLUSIVELY from this specific list: ['Indie', 'Folk', 'R&B', 'Groovy', 'Acoustic'].
     - At least TWO genres from this specific list must be selected to use the base prompts.
     - If ANY other genre (e.g., Techno, K-Pop, Metal, etc.) is included in the selection, do NOT use the base prompts, even if the above conditions are met.
     - If NO genres are selected (unspecified generation), you have a 40% chance to use the base prompts as a style reference. Otherwise, create a fresh and appropriate style based on the moods and themes.

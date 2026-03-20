@@ -2,7 +2,7 @@ import { CategoryItem } from './types';
 
 export const GENRES: CategoryItem[] = [
   { id: 'indie', label: 'Indie', description: '독창적이고 비주류적인 사운드를 가진 독립 음악입니다.' },
-  { id: 'rnb', label: 'RnB', description: '소울풀한 보컬과 그루브에 집중한 리듬 앤 블루스입니다.' },
+  { id: 'rnb', label: 'R&B', description: '소울풀한 보컬과 그루브에 집중한 리듬 앤 블루스입니다.' },
   { id: 'lofi', label: 'Lofi', description: '편안하고 아늑한 분위기의 로우파이 비트입니다.' },
   { id: 'ambient', label: 'Ambient', description: '공간감과 분위기에 집중한 잔잔한 배경 음악입니다.' },
   { id: 'folk', label: 'Folk', description: '이야기 전달을 중심으로 하는 전통적인 어쿠스틱 음악입니다.' },
@@ -66,6 +66,10 @@ export const MOODS: CategoryItem[] = [
   { id: 'hypnotic', label: 'Hypnotic', description: '최면에 걸린 듯 빠져드는 반복적인 매력입니다.' },
   { id: 'zen', label: 'Zen', description: '명상적이고 정신적인 평온함을 주는 사운드입니다.' },
   { id: 'loneliness', label: 'Loneliness', description: '고독하고 쓸쓸한 감정의 깊이를 담았습니다.' },
+  { id: 'rainy-ambience', label: 'Rainy ambience', description: '비 오는 날의 차분하고 서정적인 분위기입니다.' },
+  { id: 'forest-ambience', label: 'Forest ambience', description: '숲속의 평화롭고 자연적인 사운드입니다.' },
+  { id: 'beach-ambience', label: 'Beach ambience', description: '해변의 시원하고 여유로운 파도 소리 같은 분위기입니다.' },
+  { id: 'relaxing', label: 'Relaxing', description: '긴장을 풀고 편안하게 쉴 수 있는 휴식의 사운드입니다.' },
 ];
 
 export const THEMES: CategoryItem[] = [
