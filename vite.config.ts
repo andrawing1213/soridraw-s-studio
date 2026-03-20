@@ -18,8 +18,8 @@ export default defineConfig(({mode}) => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
-    // --- 여기서부터 추가된 부분입니다 ---
     build: {
+      chunkSizeWarningLimit: 1000, // <-- 이 줄이 추가되었습니다 (기준을 1MB로 상향)
       rollupOptions: {
         output: {
           manualChunks: (id) => {
@@ -30,6 +30,5 @@ export default defineConfig(({mode}) => {
         }
       }
     }
-    // --- 여기까지 ---
   };
 });
