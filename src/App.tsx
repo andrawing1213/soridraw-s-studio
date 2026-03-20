@@ -260,6 +260,7 @@ export default function AppWrapper() {
 
 function Navigation({ user, handleLogin, handleLogout }: { user: User | null; handleLogin: () => void; handleLogout: () => void }) {
   const [isLeftOpen, setIsLeftOpen] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -288,13 +289,13 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
   return (
     <>
       {/* Left Menu - Hamburger & Suno */}
-      <div className="absolute top-4 left-4 z-50 flex flex-col gap-3">
+      <div className="fixed top-6 left-4 md:left-[calc((100vw-1152px)/2+24px)] z-50 flex flex-col gap-4">
         <div className="relative">
           <button 
             onClick={() => setIsLeftOpen(!isLeftOpen)}
-            className="p-2.5 rounded-xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+            className="p-3 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-6 h-6" />
           </button>
 
           <AnimatePresence>
@@ -340,34 +341,64 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
           href="https://suno.com/create" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="p-2.5 rounded-xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-brand-orange shadow-xl hover:bg-zinc-800 transition-all flex items-center justify-center"
+          className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/20 hover:scale-110 transition-all flex items-center justify-center border-2 border-white/20"
           title="Suno Create"
         >
-          <Music className="w-5 h-5" />
+          <span className="text-[10px] font-black text-white tracking-tighter">SUNO</span>
         </a>
       </div>
 
       {/* Right Menu - Profile / Login (Only on Home Page) */}
       {location.pathname === '/' && (
-        <div className="absolute top-4 right-4 z-50">
+        <div className="fixed top-6 right-4 md:right-[calc((100vw-1152px)/2+24px)] z-50">
           {user ? (
-            <button 
-              onClick={() => navigate('/history')}
-              className="relative overflow-hidden rounded-full border-2 border-brand-orange/50 hover:border-brand-orange transition-all shadow-xl"
-            >
-              <img 
-                src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
-                alt="Profile" 
-                className="w-9 h-9 object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsLogoutOpen(!isLogoutOpen)}
+                className="relative overflow-hidden rounded-full border-2 border-brand-orange/50 hover:border-brand-orange transition-all shadow-xl"
+              >
+                <img 
+                  src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
+                  alt="Profile" 
+                  className="w-10 h-10 object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </button>
+
+              <AnimatePresence>
+                {isLogoutOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 w-32 py-1 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden"
+                  >
+                    <button 
+                      onClick={() => navigate('/history')}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                    >
+                      <HeartIcon className="w-3.5 h-3.5" />
+                      내 보관함
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleLogout();
+                        setIsLogoutOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-bold text-brand-orange hover:text-white hover:bg-white/5 transition-colors text-left border-t border-white/5"
+                    >
+                      로그아웃
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ) : (
             <button 
               onClick={handleLogin}
-              className="px-4 py-2 rounded-xl bg-brand-orange text-white text-[11px] font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
+              className="px-5 py-2.5 rounded-2xl bg-brand-orange text-white text-[12px] font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-4 h-4" />
               Login
             </button>
           )}
@@ -1378,23 +1409,23 @@ ${result.prompt}
             />
           </div>
 
-          <div className="flex flex-col md:flex-row items-stretch gap-4">
+          <div className="flex flex-row items-stretch gap-2 md:gap-4">
             <div className="relative flex-shrink-0">
               <button
                 onClick={applyRandom}
                 onMouseEnter={() => setHoveredItem({ id: 'random', label: '랜덤 선택', description: '키워드를 무작위로 조합합니다.' })}
                 onMouseLeave={() => setHoveredItem(null)}
-                className="h-full px-6 py-4 md:py-0 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white transition-all border border-white/10 flex items-center justify-center gap-2 group/random"
+                className="h-full w-14 md:w-auto md:px-6 py-4 md:py-0 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white transition-all border border-white/10 flex items-center justify-center gap-2 group/random"
               >
                 <Dices className="w-5 h-5 text-brand-orange group-hover:rotate-180 transition-transform duration-500" />
-                <span className="md:hidden font-bold">랜덤 선택</span>
+                <span className="hidden md:block font-bold">랜덤 선택</span>
               </button>
             </div>
 
             <button
               onClick={handleGenerate}
               className={cn(
-                "flex-1 py-5 rounded-2xl text-white font-bold text-2xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-[0.98]",
+                "flex-1 py-4 md:py-5 rounded-2xl text-white font-bold text-xl md:text-2xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-[0.98]",
                 isGenerating 
                   ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30" 
                   : "music-waves shadow-brand-orange/20 hover:brightness-110"
@@ -1402,13 +1433,13 @@ ${result.prompt}
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  작곡 취소하기
+                  <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />
+                  <span className="text-sm md:text-2xl">작곡 취소</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-6 h-6" />
-                  곡 생성하기
+                  <Sparkles className="w-5 h-5 md:w-6 md:h-6" />
+                  <span className="text-sm md:text-2xl">곡 생성하기</span>
                 </>
               )}
             </button>
@@ -1418,9 +1449,10 @@ ${result.prompt}
                 onClick={clearAll}
                 onMouseEnter={() => setHoveredItem({ id: 'clear-all', label: 'Clear all', description: '핀을 제외한 모든 선택 삭제' })}
                 onMouseLeave={() => setHoveredItem(null)}
-                className="h-full px-6 py-4 md:py-0 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white transition-all border border-white/10 text-sm font-bold flex items-center justify-center"
+                className="h-full w-14 md:w-auto md:px-6 py-4 md:py-0 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white transition-all border border-white/10 flex items-center justify-center gap-2"
               >
-                Clear all
+                <Trash2 className="w-5 h-5 text-red-500" />
+                <span className="hidden md:block font-bold">Clear all</span>
               </button>
             </div>
           </div>
