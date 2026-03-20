@@ -8,7 +8,8 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // Vercel 환경(process.env)을 먼저 찾고, 없으면 AI 스튜디오 환경(env)을 찾도록 보강
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY),
     },
     resolve: {
       alias: {
@@ -19,7 +20,7 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
     build: {
-      chunkSizeWarningLimit: 1000, // <-- 이 줄이 추가되었습니다 (기준을 1MB로 상향)
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks: (id) => {
