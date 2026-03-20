@@ -147,6 +147,7 @@ export default function App() {
   const [hoveredItem, setHoveredItem] = useState<CategoryItem | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [kpopMode, setKpopMode] = useState<0 | 1 | 2>(0); // 0: unselected, 1: basic, 2: mixed
+  const [citypopMode, setCitypopMode] = useState<0 | 1 | 2>(0); // 0: unselected, 1: old, 2: modern
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load history from localStorage
@@ -223,6 +224,35 @@ export default function App() {
       return;
     }
 
+    // City Pop Special Logic
+    if (category === 'genre' && id === 'citypop') {
+      const nextMode = ((citypopMode + 1) % 3) as 0 | 1 | 2;
+      let canChange = true;
+      
+      if (nextMode !== 0 && !state.includes(id) && state.length >= 10) {
+        canChange = false;
+      }
+
+      if (canChange) {
+        setCitypopMode(nextMode);
+        if (nextMode === 0) {
+          set(state.filter(i => i !== id));
+        } else if (!state.includes(id)) {
+          set([...state, id]);
+        }
+
+        // Update hover description if currently hovering
+        if (hoveredItem?.id === 'citypop') {
+          const citypopItem = GENRES.find(g => g.id === 'citypop')!;
+          let nextDesc = citypopItem.description;
+          if (nextMode === 1) nextDesc = "City Pop (올드): 80년대 일본 팝, 펑크, 그루비한 레트로 사운드의 오리지널 시티팝입니다.";
+          else if (nextMode === 2) nextDesc = "City Pop (현대): 누디스코, 신스팝, 매끄러운 현대적 감각이 더해진 모던 시티팝입니다.";
+          setHoveredItem({ ...citypopItem, description: nextDesc });
+        }
+      }
+      return;
+    }
+
     if (state.includes(id)) {
       set(state.filter(i => i !== id));
       
@@ -287,6 +317,7 @@ export default function App() {
     if (category === 'genre') {
       setSelectedGenres(pinnedGenres);
       if (!pinnedGenres.includes('kpop')) setKpopMode(0);
+      if (!pinnedGenres.includes('citypop')) setCitypopMode(0);
     }
     if (category === 'mood') setSelectedMoods(pinnedMoods);
     if (category === 'theme') setSelectedThemes(pinnedThemes);
@@ -295,6 +326,7 @@ export default function App() {
   const clearAll = () => {
     setSelectedGenres(pinnedGenres);
     if (!pinnedGenres.includes('kpop')) setKpopMode(0);
+    if (!pinnedGenres.includes('citypop')) setCitypopMode(0);
     setSelectedMoods(pinnedMoods);
     setSelectedThemes(pinnedThemes);
     setUserInput('');
@@ -485,8 +517,16 @@ export default function App() {
         specialPrompt = "Infectious Rhythm, Upbeat & Cheerful, Driving 2-beat / 4-beat, Bright Brass section, Festive / Celebratory.";
       }
 
+      const genreLabels = finalGenres.flatMap(id => {
+        if (id === 'citypop') {
+          if (citypopMode === 1) return ["City Pop", "80s Japanese Pop", "Funk", "Groovy", "Retro"];
+          if (citypopMode === 2) return ["Modern City Pop", "Nu-Disco", "Synth-pop", "Smooth"];
+        }
+        return [GENRES.find(g => g.id === id)?.label || id];
+      });
+
       const song = await generateSong(
-        finalGenres.map(id => GENRES.find(g => g.id === id)?.label || id),
+        genreLabels,
         finalMoods.map(id => MOODS.find(m => m.id === id)?.label || id),
         finalThemes.map(id => THEMES.find(t => t.id === id)?.label || id),
         userInput,
@@ -615,6 +655,7 @@ ${result.prompt}
             onToggleExpand={() => setIsGenreExpanded(!isGenreExpanded)}
             allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
             kpopMode={kpopMode}
+            citypopMode={citypopMode}
           />
           <CategorySection 
             title="분위기" 
@@ -1131,6 +1172,7 @@ interface CategorySectionProps {
   onToggleExpand: () => void;
   allExpanded: boolean;
   kpopMode?: 0 | 1 | 2;
+  citypopMode?: 0 | 1 | 2;
 }
 
 function CategorySection({ 
@@ -1148,7 +1190,8 @@ function CategorySection({
   isExpanded,
   onToggleExpand,
   allExpanded,
-  kpopMode = 0
+  kpopMode = 0,
+  citypopMode = 0
 }: CategorySectionProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
 
@@ -1205,6 +1248,7 @@ function CategorySection({
           const isPinned = pinned.includes(item.id);
           const isSelected = selected.includes(item.id);
           const isKpop = item.id === 'kpop';
+          const isCitypop = item.id === 'citypop';
           
           // K-Pop specific styles
           let kpopStyle = "";
@@ -1223,6 +1267,20 @@ function CategorySection({
             }
           }
 
+          // City Pop specific styles
+          let citypopStyle = "";
+          if (isCitypop) {
+            if (citypopMode === 1) {
+              citypopStyle = "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20";
+              displayDescription = "City Pop (올드): 80년대 일본 팝, 펑크, 그루비한 레트로 사운드의 오리지널 시티팝입니다.";
+            } else if (citypopMode === 2) {
+              citypopStyle = "bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-500/20";
+              displayDescription = "City Pop (현대): 누디스코, 신스팝, 매끄러운 현대적 감각이 더해진 모던 시티팝입니다.";
+            } else {
+              citypopStyle = "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200";
+            }
+          }
+
           return (
             <div key={item.id} className="relative group/btn">
               <button
@@ -1232,9 +1290,11 @@ function CategorySection({
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-sm font-medium transition-all border flex items-center gap-2",
                   isKpop ? kpopStyle : (
-                    isSelected
-                      ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
-                      : "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200"
+                    isCitypop ? citypopStyle : (
+                      isSelected
+                        ? "bg-brand-orange border-orange-400 text-white shadow-lg shadow-brand-orange/20"
+                        : "bg-[#19191b] border-white/5 text-gray-400 hover:border-brand-orange/30 hover:text-gray-200"
+                    )
                   )
                 )}
               >
@@ -1242,6 +1302,12 @@ function CategorySection({
                   <span className={cn(
                     "w-1.5 h-1.5 rounded-full",
                     kpopMode === 1 ? "bg-white" : "bg-indigo-200"
+                  )} />
+                )}
+                {isCitypop && citypopMode > 0 && (
+                  <span className={cn(
+                    "w-1.5 h-1.5 rounded-full",
+                    citypopMode === 1 ? "bg-white" : "bg-emerald-200"
                   )} />
                 )}
                 {displayLabel}

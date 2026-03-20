@@ -25,8 +25,11 @@ export const GENRES: CategoryItem[] = [
   { id: 'techno', label: 'Techno', description: '반복적인 비트와 전자적인 사운드가 특징인 테크노 음악입니다.' },
   { id: 'kpop', label: 'K-Pop', description: '한국의 대중음악으로, 다양한 장르가 혼합된 세련된 사운드입니다.' },
   { id: 'jpop', label: 'J-Pop', description: '일본의 대중음악으로, 특유의 멜로디 라인과 편곡이 특징입니다.' },
+  { id: 'citypop', label: 'City Pop', description: '세련된 도시적 감성과 레트로한 사운드가 특징인 시티팝입니다.' },
+  { id: 'bossanova', label: 'Bossanova', description: '브라질의 삼바와 재즈가 결합된 부드럽고 낭만적인 리듬입니다.' },
+  { id: 'neosoul', label: 'Neo Soul', description: '현대적인 R&B와 소울, 재즈가 결합된 깊이 있는 그루브입니다.' },
   { id: 'guitar', label: 'Guitar', description: '기타 연주가 중심이 되는 어쿠스틱하거나 일렉트릭한 사운드입니다.' },
-  { id: 'synth', label: 'Synth', description: '신시사이저 사운드가 주도하는 전자 음악입니다.' },
+  { id: 'synth', label: 'Synthwave', description: '80년대 레트로 감성을 현대적으로 재해석한 전자 음악입니다.' },
   { id: 'pop', label: 'Pop', description: '대중적이고 캐치한 멜로디의 현대적인 음악입니다.' },
   { id: 'electronic', label: 'Electronic', description: '전자 악기와 기술을 활용한 현대적인 사운드입니다.' },
   { id: 'piano', label: 'Piano', description: '피아노 선율이 중심이 되는 서정적인 음악입니다.' },
@@ -112,6 +115,14 @@ export const THEMES: CategoryItem[] = [
   { id: 'unrequited-love', label: '짝사랑', description: '혼자만 간직한 애틋하고 아픈 사랑의 감정입니다.' },
   { id: 'hometown', label: '고향', description: '태어나고 자란 곳에 대한 그리움과 추억입니다.' },
   { id: 'living-away', label: '타향살이', description: '익숙하지 않은 곳에서 살아가는 외로움과 적응의 과정입니다.' },
+  { id: 'drive', label: '드라이브', description: '차를 타고 달리는 상쾌함과 자유로운 기분입니다.' },
+  { id: 'reunion', label: '재회', description: '오랜만에 다시 만난 인연의 설렘과 복잡한 감정입니다.' },
+  { id: 'dawn', label: '새벽', description: '모두가 잠든 시간, 고요하고 깊은 감성의 순간입니다.' },
+  { id: 'first-snow', label: '첫눈', description: '겨울의 시작을 알리는 첫눈의 설렘과 낭만입니다.' },
+  { id: 'gift', label: '선물', description: '누군가를 위해 준비한 마음과 전해지는 따뜻함입니다.' },
+  { id: 'rain', label: '비', description: '창밖을 적시는 빗소리와 차분해지는 마음입니다.' },
+  { id: 'alcohol', label: '술', description: '술 한 잔에 담긴 진솔한 이야기와 취기 어린 감정입니다.' },
+  { id: 'analog', label: '아날로그', description: '투박하지만 따뜻한 옛 감성과 아날로그적 추억입니다.' },
 ];
 
 export const BASE_PROMPTS = [
