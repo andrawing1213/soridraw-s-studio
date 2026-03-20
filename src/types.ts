@@ -20,6 +20,12 @@ export interface SongResult {
   randomKeywords?: string[];
 }
 
+export interface FavoriteSong extends SongResult {
+  id: string;
+  userId: string;
+  createdAt: any;
+}
+
 export interface CategoryItem {
   id: string;
   label: string;

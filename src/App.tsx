@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, Component } from 'react';
 import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  Link, 
+  useNavigate,
+  useLocation
+} from 'react-router-dom';
+import { 
   Music, 
   Sparkles, 
   RotateCcw, 
@@ -20,7 +28,10 @@ import {
   Maximize2,
   Minimize2,
   Shuffle,
-  Dices
+  Dices,
+  Menu,
+  Home as HomeIcon,
+  Heart as HeartIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -240,8 +251,254 @@ const calculateOptimalBPM = (genres: string[], moods: string[]) => {
 export default function AppWrapper() {
   return (
     <ErrorBoundary>
-      <App />
+      <Router>
+        <App />
+      </Router>
     </ErrorBoundary>
+  );
+}
+
+function Navigation({ user, handleLogin, handleLogout }: { user: User | null; handleLogin: () => void; handleLogout: () => void }) {
+  const [isLeftOpen, setIsLeftOpen] = useState(false);
+  const [isRightOpen, setIsRightOpen] = useState(false);
+  const navigate = useNavigate();
+
+  return (
+    <>
+      {/* Left Menu - Hamburger */}
+      <div 
+        className="fixed top-6 left-6 z-50 group"
+        onMouseEnter={() => setIsLeftOpen(true)}
+        onMouseLeave={() => setIsLeftOpen(false)}
+      >
+        <button className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-2xl hover:bg-zinc-800 transition-all">
+          <Menu className="w-7 h-7" />
+        </button>
+
+        <AnimatePresence>
+          {isLeftOpen && (
+            <motion.div
+              initial={{ opacity: 0, x: -10, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -10, scale: 0.95 }}
+              className="absolute top-0 left-full ml-4 w-48 py-2 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <Link 
+                to="/" 
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                onClick={() => setIsLeftOpen(false)}
+              >
+                <HomeIcon className="w-4 h-4" />
+                홈으로
+              </Link>
+              <Link 
+                to="/history" 
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                onClick={() => setIsLeftOpen(false)}
+              >
+                <HeartIcon className="w-4 h-4" />
+                내 보관함
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Right Menu - Profile / Login */}
+      <div 
+        className="fixed top-6 right-6 z-50 flex items-center gap-4"
+        onMouseEnter={() => setIsRightOpen(true)}
+        onMouseLeave={() => setIsRightOpen(false)}
+      >
+        {user ? (
+          <div className="relative group">
+            <div className="flex items-center gap-4 bg-zinc-900/80 p-2 pr-6 rounded-full border border-white/10 backdrop-blur-md shadow-2xl">
+              <button 
+                onClick={() => navigate('/history')}
+                className="relative overflow-hidden rounded-full border-2 border-brand-orange/50 hover:border-brand-orange transition-all"
+              >
+                <img 
+                  src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
+                  alt="Profile" 
+                  className="w-10 h-10 md:w-14 md:h-14 object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </button>
+              <div className="flex flex-col">
+                <span className="text-xs md:text-sm font-bold text-white truncate max-w-[100px]">
+                  {user.displayName}
+                </span>
+                <button 
+                  onClick={handleLogout}
+                  className="text-[10px] md:text-xs font-bold text-brand-orange hover:text-white transition-colors text-left"
+                >
+                  로그아웃
+                </button>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {isRightOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full right-0 mt-4 w-48 py-2 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden"
+                >
+                  <Link 
+                    to="/" 
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                    onClick={() => setIsRightOpen(false)}
+                  >
+                    <HomeIcon className="w-4 h-4" />
+                    홈으로
+                  </Link>
+                  <Link 
+                    to="/history" 
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                    onClick={() => setIsRightOpen(false)}
+                  >
+                    <HeartIcon className="w-4 h-4" />
+                    내 보관함
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <button 
+            onClick={handleLogin}
+            className="px-6 py-3 md:px-10 md:py-5 rounded-2xl bg-brand-orange text-white text-sm md:text-lg font-bold shadow-xl shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-3"
+          >
+            <Sparkles className="w-6 h-6" />
+            Google 로그인
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+function FavoritesPage({ favorites, toggleFavorite, user }: { favorites: any[]; toggleFavorite: (song: any) => void; user: User | null }) {
+  const [selectedSong, setSelectedSong] = useState<any | null>(null);
+
+  if (!user) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
+        <div className="p-6 rounded-full bg-zinc-900/50 mb-6">
+          <HeartIcon className="w-12 h-12 text-gray-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">로그인이 필요합니다</h2>
+        <p className="text-gray-500 mb-8">보관함을 이용하려면 로그인을 해주세요.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="flex items-center gap-4 mb-12">
+        <div className="p-3 rounded-2xl bg-brand-orange/10">
+          <HeartIcon className="w-8 h-8 text-brand-orange fill-brand-orange" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-white">내 보관함</h1>
+          <p className="text-gray-500">내가 하트 누른 곡들을 모아보세요.</p>
+        </div>
+      </div>
+
+      {favorites.length === 0 ? (
+        <div className="min-h-[40vh] flex flex-col items-center justify-center text-center bg-zinc-900/30 rounded-3xl border border-white/5 p-12">
+          <Music className="w-12 h-12 text-zinc-800 mb-4" />
+          <p className="text-gray-500 text-lg font-medium">아직 저장된 곡이 없습니다.</p>
+          <Link to="/" className="mt-6 text-brand-orange font-bold hover:underline">
+            첫 번째 곡 만들러 가기
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {favorites.map((song) => (
+            <motion.div
+              key={song.id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-zinc-900/50 border border-white/10 rounded-3xl p-6 hover:bg-zinc-800/50 transition-all group"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-white line-clamp-1">{song.title}</h3>
+                <button 
+                  onClick={() => toggleFavorite(song)}
+                  className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {song.appliedKeywords.genre.map((g: string) => (
+                    <span key={g} className="text-[10px] px-2 py-1 rounded-md bg-white/5 text-gray-400">#{g}</span>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setSelectedSong(song)}
+                    className="flex-1 py-3 rounded-xl bg-white/5 text-white font-bold text-sm hover:bg-white/10 transition-all"
+                  >
+                    가사 보기
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Lyrics Modal */}
+      <AnimatePresence>
+        {selectedSong && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedSong(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">{selectedSong.title}</h2>
+                <button onClick={() => setSelectedSong(null)} className="p-2 rounded-full hover:bg-white/5 text-gray-400">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-brand-orange font-bold text-xs uppercase tracking-widest mb-4">Lyrics (Korean)</h3>
+                    <p className="text-lg text-white leading-relaxed whitespace-pre-wrap font-serif">
+                      {selectedSong.lyrics.korean}
+                    </p>
+                  </div>
+                  <div className="pt-8 border-t border-white/5">
+                    <h3 className="text-brand-orange font-bold text-xs uppercase tracking-widest mb-4">Lyrics (English)</h3>
+                    <p className="text-lg text-gray-400 leading-relaxed whitespace-pre-wrap font-serif italic">
+                      {selectedSong.lyrics.english}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -814,70 +1071,47 @@ ${result.prompt}
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-sans selection:bg-brand-orange/30">
-      {/* Header */}
-      <header className="pt-8 pb-12 px-6 border-b border-white/5 bg-gradient-to-b from-zinc-900/50 to-transparent relative">
-        <div className="max-w-6xl mx-auto">
-          {/* Auth Button - Top Right */}
-          <div className="flex justify-end mb-8">
-            {user ? (
-              <div className="flex items-center gap-3 bg-zinc-800/50 p-1.5 pr-4 rounded-full border border-white/10 backdrop-blur-sm shadow-xl">
-                <img 
-                  src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
-                  alt="Profile" 
-                  className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-white/20"
-                  referrerPolicy="no-referrer"
-                />
-                <button 
-                  onClick={handleLogout}
-                  className="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white transition-colors"
-                >
-                  로그아웃
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={handleLogin}
-                className="px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-brand-orange text-white text-[10px] md:text-sm font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
-              >
-                <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                Google 로그인
-              </button>
-            )}
-          </div>
+      <Navigation user={user} handleLogin={handleLogin} handleLogout={handleLogout} />
 
-          <div className="text-center">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center mb-6"
-            >
-              <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-brand-orange/10">
-                <Music className="w-8 h-8 text-brand-orange" />
+      <Routes>
+        <Route path="/" element={
+          <>
+            {/* Header */}
+            <header className="pt-24 pb-12 px-6 border-b border-white/5 bg-gradient-to-b from-zinc-900/50 to-transparent relative">
+              <div className="max-w-6xl mx-auto">
+                <div className="text-center">
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center mb-6"
+                  >
+                    <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-brand-orange/10">
+                      <Music className="w-8 h-8 text-brand-orange" />
+                    </div>
+                  </motion.div>
+                  <h1 
+                    className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2 font-display"
+                    style={{ fontFamily: 'Verdana' }}
+                  >
+                    SORIDRAW's <span className="text-studio-brown">Studio</span>
+                  </h1>
+                  <p className="text-[11px] md:text-[13px] text-gray-500 font-medium tracking-widest uppercase mb-4">
+                    Compose Your Atmosphere
+                  </p>
+                  <p 
+                    className="max-w-2xl mx-auto leading-relaxed px-4"
+                    style={{ fontFamily: 'Courier New', color: '#96999d', fontWeight: 'normal', fontSize: '14px' }}
+                  >
+                    '당신의 이야기를 음악으로'<br className="md:hidden" />
+                    키워드를 선택하여 세상에 단 하나 뿐인 당신만의 감성적인 곡을 만들어보세요.
+                  </p>
+                </div>
               </div>
-            </motion.div>
-            <h1 
-              className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2 font-display"
-              style={{ fontFamily: 'Verdana' }}
-            >
-              SORIDRAW's <span className="text-studio-brown">Studio</span>
-            </h1>
-            <p className="text-[11px] md:text-[13px] text-gray-500 font-medium tracking-widest uppercase mb-4">
-              Compose Your Atmosphere
-            </p>
-            <p 
-              className="max-w-2xl mx-auto leading-relaxed px-4"
-              style={{ fontFamily: 'Courier New', color: '#96999d', fontWeight: 'normal', fontSize: '14px' }}
-            >
-              '당신의 이야기를 음악으로'<br className="md:hidden" />
-              키워드를 선택하여 세상에 단 하나 뿐인 당신만의 감성적인 곡을 만들어보세요.
-            </p>
-          </div>
-        </div>
-      </header>
+            </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        {/* Selection Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+              {/* Selection Sections */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <CategorySection 
             title="장르" 
             description="곡의 전반적인 음악 스타일을 결정합니다. (프롬프트에 영향)"
@@ -1343,7 +1577,11 @@ ${result.prompt}
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
+            </main>
+          </>
+        } />
+        <Route path="/history" element={<FavoritesPage favorites={favorites} toggleFavorite={toggleFavorite} user={user} />} />
+      </Routes>
 
       {/* Tooltip / Description Overlay */}
       <AnimatePresence>
