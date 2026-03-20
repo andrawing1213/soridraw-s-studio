@@ -1,5 +1,5 @@
 export type Category = 'genre' | 'mood' | 'theme';
-export type LyricsLength = 'short' | 'normal' | 'long';
+export type LyricsLength = 'very-short' | 'short' | 'normal';
 export type DrumStyle = 'none' | 'half-time' | 'double-time';
 
 export interface SongResult {

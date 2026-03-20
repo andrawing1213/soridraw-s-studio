@@ -102,7 +102,18 @@ export default function App() {
 
     if (state.includes(id)) {
       set(state.filter(i => i !== id));
-    } else if (state.length < 6) {
+      
+      // Trot Logic: Auto-unselect moods
+      if (category === 'genre') {
+        if (id === 'traditional-trot') {
+          const moodsToRemove = ['melancholic', 'nostalgic', 'bittersweet', 'loneliness', 'emotional', 'cinematic'];
+          setSelectedMoods(prev => prev.filter(m => !moodsToRemove.includes(m)));
+        } else if (id === 'semi-trot') {
+          const moodsToRemove = ['urban', 'infectious', 'groovy', 'upbeat', 'cheerful', 'bright'];
+          setSelectedMoods(prev => prev.filter(m => !moodsToRemove.includes(m)));
+        }
+      }
+    } else if (state.length < 10) {
       set([...state, id]);
       
       // Trot Logic: Auto-select moods
@@ -111,13 +122,13 @@ export default function App() {
           const moodsToAdd = ['melancholic', 'nostalgic', 'bittersweet', 'loneliness', 'emotional', 'cinematic'];
           setSelectedMoods(prev => {
             const combined = Array.from(new Set([...prev, ...moodsToAdd]));
-            return combined.slice(0, 6);
+            return combined.slice(0, 10);
           });
         } else if (id === 'semi-trot') {
           const moodsToAdd = ['urban', 'infectious', 'groovy', 'upbeat', 'cheerful', 'bright'];
           setSelectedMoods(prev => {
             const combined = Array.from(new Set([...prev, ...moodsToAdd]));
-            return combined.slice(0, 6);
+            return combined.slice(0, 10);
           });
         }
       }
@@ -139,7 +150,7 @@ export default function App() {
     } else {
       // When pinning, ensure it's also selected
       if (!selected.includes(id)) {
-        if (selected.length < 6) {
+        if (selected.length < 10) {
           setSelected([...selected, id]);
           setPinned([...pinned, id]);
         }
@@ -516,13 +527,13 @@ ${result.prompt}
                     className="flex-shrink-0 pr-12"
                     style={{ fontSize: '17px', color: '#999ea6' }}
                   >
-                    당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)
+                    당신의 이야기를 음악으로 만들어보세요. (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)
                   </div>
                   <div 
                     className="flex-shrink-0 pr-12"
                     style={{ fontSize: '17px', color: '#999ea6' }}
                   >
-                    당신의 이야기를 들려주세요 (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)
+                    당신의 이야기를 음악으로 만들어보세요. (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)
                   </div>
                 </div>
               </div>
@@ -592,7 +603,7 @@ ${result.prompt}
           <button
             onClick={handleGenerate}
             className={cn(
-              "w-full py-5 rounded-2xl text-white font-bold text-xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-[0.98]",
+              "w-full py-5 rounded-2xl text-white font-bold text-2xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-[0.98]",
               isGenerating 
                 ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30" 
                 : "music-waves shadow-brand-orange/20 hover:brightness-110"
@@ -938,7 +949,7 @@ function CategorySection({
           >
             <span className="w-1.5 h-6 bg-brand-orange rounded-full" />
             {title}
-            <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/6)</span>
+            <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/10)</span>
           </h3>
           <AnimatePresence>
             {showTitleTooltip && (
@@ -996,9 +1007,9 @@ function CategorySection({
                 {item.label}
               </button>
               
-              {/* Floating Description Tooltip */}
+              {/* Floating Description Tooltip - Only show when expanded */}
               <AnimatePresence>
-                {hoveredItem?.id === item.id && (
+                {isExpanded && hoveredItem?.id === item.id && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1030,8 +1041,8 @@ function CategorySection({
         })}
       </div>
 
-      {/* Expand/Collapse Button */}
-      <div className="mt-4 flex justify-center">
+      {/* Expand/Collapse Button - mt-auto ensures they align at the bottom of the grid row */}
+      <div className="mt-auto pt-4 flex justify-center">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-2 px-6 py-2 rounded-full bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/30 hover:border-brand-orange/50 group/expand shadow-lg shadow-brand-orange/5"
@@ -1058,9 +1069,9 @@ function LyricsLengthControl({ value, onChange }: LyricsLengthControlProps) {
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   const options = [
-    { id: 'normal', label: '기본', description: '일반적인 팝 스타일의 가사 분량' },
+    { id: 'very-short', label: '더 짧게', description: '매우 간결하고 함축적인 가사 (2-3줄)' },
     { id: 'short', label: '짧게', description: '함축적이고 간결한 가사 (째즈/발라드 추천)' },
-    { id: 'long', label: '길게', description: '상세하고 많은 양의 가사 (랩/힙합/댄스 추천)' }
+    { id: 'normal', label: '기본', description: '일반적인 팝 스타일의 가사 분량' }
   ];
 
   return (

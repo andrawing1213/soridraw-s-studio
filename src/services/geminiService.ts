@@ -47,9 +47,9 @@ export async function generateSong(
     - CRITICAL: The content of the lyrics MUST be influenced ONLY by the 'Themes' and 'User Story'. 
     - CRITICAL: The 'Genres' and 'Moods' should NOT directly influence the lyrics content, but they should influence the music prompt.
     - Length Constraint (lyricsLength: ${lyricsLength}):
+      - 'very-short': Extremely concise and minimal lyrics. Only 2-3 lines per section.
       - 'short': Concise and implicit lyrics, suitable for Jazz or Ballads. Fewer lines per section.
       - 'normal': Standard length for most pop songs.
-      - 'long': More detailed lyrics with slightly more lines per section, suitable for Rap, Hip-Hop, Metal, Latin, or Dance. Keep it within a reasonable length for a 3-minute song. Avoid excessive repetition unless it's a stylistic choice.
     - Provide both English and Korean versions.
     - CRITICAL: When providing Korean titles and lyrics, do NOT translate English literally. Instead, capture the lyrical and poetic essence of the song to make it feel natural, emotionally resonant, and beautiful in Korean. The Korean lyrics should read like a standalone poem or song.
     
