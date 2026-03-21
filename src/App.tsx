@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Component } from 'react';
+import React, { useState, useEffect, useRef, Component, useCallback } from 'react';
 import { 
   BrowserRouter as Router, 
   Routes, 
@@ -27,11 +27,15 @@ import {
   ArrowRight,
   Maximize2,
   Minimize2,
+  Plus,
   Shuffle,
   Dices,
   Menu,
   Home as HomeIcon,
-  Heart as HeartIcon
+  Heart as HeartIcon,
+  User as UserIcon,
+  Heart,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -54,7 +58,6 @@ import {
   getDocFromServer,
   query as firestoreQuery
 } from 'firebase/firestore';
-import { Heart, AlertCircle } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -259,9 +262,42 @@ export default function AppWrapper() {
 }
 
 function Navigation({ user, handleLogin, handleLogout }: { user: User | null; handleLogin: () => void; handleLogout: () => void }) {
-  const [isLeftOpen, setIsLeftOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Collapse menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Collapse menu on scroll or activity elsewhere
+  useEffect(() => {
+    const handleActivity = () => {
+      if (isExpanded) {
+        // We could auto-collapse after some time, but the user asked for "when moving or touching elsewhere"
+        // which is mostly covered by handleClickOutside. 
+        // But let's add a scroll listener to collapse it.
+      }
+    };
+    window.addEventListener('scroll', () => {
+      setIsExpanded(false);
+      setIsProfileOpen(false);
+    });
+    return () => window.removeEventListener('scroll', () => {
+      setIsExpanded(false);
+      setIsProfileOpen(false);
+    });
+  }, [isExpanded]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -277,7 +313,7 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
     } else {
       navigate('/');
     }
-    setIsLeftOpen(false);
+    setIsExpanded(false);
   };
 
   const handleHistoryClick = () => {
@@ -290,7 +326,7 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
     } else {
       navigate('/history');
     }
-    setIsLeftOpen(false);
+    setIsExpanded(false);
   };
 
   const handleSunoClick = (e: React.MouseEvent) => {
@@ -298,136 +334,131 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
       e.preventDefault();
       handleLogin();
     }
+    setIsExpanded(false);
   };
 
   return (
     <>
-      {/* Backdrop for Menu */}
-      <AnimatePresence>
-        {isLeftOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsLeftOpen(false)}
-            className="fixed inset-0 z-40 bg-black/5 backdrop-blur-[1px]"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Left Menu - Hamburger & Suno */}
-      <div className="fixed top-6 left-4 md:left-[calc((100vw-1152px)/2+12px)] z-50 flex items-center gap-3">
+      {/* Floating Bar (Menu Folder) */}
+      <div 
+        ref={menuRef}
+        className="fixed top-6 left-4 md:left-[calc((100vw-1152px)/2-68px)] z-50 flex flex-col items-center gap-4"
+      >
+        {/* Folder Trigger Icon */}
         <button 
-          onClick={handleHomeClick}
-          className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={cn(
+            "p-3 rounded-2xl bg-zinc-900/90 border border-white/10 backdrop-blur-md text-white shadow-2xl transition-all z-50",
+            isExpanded ? "bg-brand-orange border-brand-orange/50 scale-90" : "hover:bg-zinc-800"
+          )}
         >
-          <HomeIcon className="w-5 h-5" />
+          <Menu className={cn("w-6 h-6 transition-transform", isExpanded && "rotate-90")} />
         </button>
-        <div className="relative">
-          <button 
-            onClick={() => {
-              if (!user) {
-                handleLogin();
-              } else {
-                setIsLeftOpen(!isLeftOpen);
-              }
-            }}
-            className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
 
-          <AnimatePresence>
-            {isLeftOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute top-full left-0 mt-3 w-36 py-2 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden flex flex-col"
-              >
-                {user && (
-                  <div className="px-4 py-3 mb-1 border-bottom border-white/5 flex flex-col items-center gap-2">
-                    <div className="relative overflow-hidden rounded-full border border-brand-orange/30 shadow-lg">
-                      <img 
-                        src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
-                        alt="Profile" 
-                        className="w-10 h-10 object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-400 font-medium truncate w-full text-center">
-                      {user.displayName || 'User'}
-                    </span>
-                  </div>
-                )}
-                
-                <button 
-                  onClick={handleHomeClick}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left"
-                >
-                  <HomeIcon className="w-3.5 h-3.5" />
-                  홈으로
-                </button>
-                <button 
-                  onClick={handleHistoryClick}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left"
-                >
-                  <HeartIcon className="w-3.5 h-3.5" />
-                  내 보관함
-                </button>
-                {user && (
+        {/* Expanded Icons */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.8 }}
+              className="flex flex-col items-center gap-4"
+            >
+              {/* Profile Icon */}
+              <div className="relative">
+                {user ? (
                   <button 
-                    onClick={() => {
-                      handleLogout();
-                      setIsLeftOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-bold text-brand-orange hover:text-white hover:bg-white/5 transition-colors text-left border-t border-white/5"
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="relative overflow-hidden rounded-full border-2 border-brand-orange/30 shadow-xl hover:scale-110 transition-all group"
                   >
-                    로그아웃
+                    <img 
+                      src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
+                      alt="Profile" 
+                      className="w-10 h-10 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => { handleLogin(); setIsExpanded(false); }}
+                    className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+                  >
+                    <UserIcon className="w-5 h-5" />
                   </button>
                 )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {!user && (
-          <a 
-            href="https://suno.com/create" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            onClick={handleSunoClick}
-            className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/20 hover:scale-110 transition-all flex items-center justify-center border-2 border-white/20"
-            title="Suno Create"
-          >
-            <span className="text-[9px] font-black text-white tracking-tighter">SUNO</span>
-          </a>
-        )}
+                {/* Profile Popup (Logout) */}
+                <AnimatePresence>
+                  {isProfileOpen && user && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: 10, scale: 0.95 }}
+                      className="absolute left-full ml-3 top-0 w-32 py-2 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden"
+                    >
+                      <div className="px-3 py-2 border-b border-white/5 mb-1">
+                        <p className="text-[10px] text-gray-400 truncate font-medium">{user.displayName}</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          handleLogout();
+                          setIsProfileOpen(false);
+                          setIsExpanded(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-brand-orange hover:bg-white/5 transition-colors text-left"
+                      >
+                        로그아웃
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Home Icon */}
+              <button 
+                onClick={handleHomeClick}
+                className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+                title="홈으로"
+              >
+                <HomeIcon className="w-5 h-5" />
+              </button>
+
+              {/* Heart Icon (Favorites) */}
+              <button 
+                onClick={handleHistoryClick}
+                className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+                title="내 보관함"
+              >
+                <HeartIcon className="w-5 h-5" />
+              </button>
+
+              {/* Suno Icon */}
+              <a 
+                href="https://suno.com/create" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={handleSunoClick}
+                className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black tracking-tighter hover:scale-110 transition-all bg-transparent"
+                title="Suno Create"
+              >
+                SUNO
+              </a>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Right Menu - Login or Suno (Only on Home Page) */}
-      {location.pathname === '/' && (
+      {/* Right Menu - Login (Only on Home Page) */}
+      {location.pathname === '/' && !user && (
         <div className="fixed top-6 right-4 md:right-[calc((100vw-1152px)/2+12px)] z-50">
-          {!user ? (
-            <button 
-              onClick={handleLogin}
-              className="px-4 py-2 rounded-2xl bg-brand-orange text-white text-[11px] font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Login
-            </button>
-          ) : (
-            <a 
-              href="https://suno.com/create" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              onClick={handleSunoClick}
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/20 hover:scale-110 transition-all flex items-center justify-center border-2 border-white/20"
-              title="Suno Create"
-            >
-              <span className="text-[9px] font-black text-white tracking-tighter">SUNO</span>
-            </a>
-          )}
+          <button 
+            onClick={handleLogin}
+            className="px-4 py-2 rounded-2xl bg-brand-orange text-white text-[11px] font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Login
+          </button>
         </div>
       )}
     </>
@@ -468,7 +499,7 @@ ${song.lyrics.korean}
 [Music Prompt]
 ${song.prompt}
     `.trim();
-    copyToClipboard(text, 'all');
+    copyToClipboard(text, `all-${song.id}`);
   };
 
   if (!user) {
@@ -560,12 +591,23 @@ ${song.prompt}
                   ))}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button 
                     onClick={() => setSelectedSong(song)}
-                    className="flex-1 py-3 rounded-xl bg-white/5 text-white font-bold text-xs hover:bg-white/10 transition-all"
+                    className="flex-[4] py-3 rounded-xl bg-white/5 text-white font-bold text-xs hover:bg-white/10 transition-all"
                   >
                     가사 보기
+                  </button>
+                  <button 
+                    onClick={() => copyAll(song)}
+                    className="flex-1 py-3 rounded-xl bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all flex items-center justify-center group/copy border border-brand-orange/20"
+                    title="곡 정보 모두 복사"
+                  >
+                    {copiedType === `all-${song.id}` ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 group-hover/copy:scale-110 transition-transform" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -602,13 +644,6 @@ ${song.prompt}
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => copyAll(selectedSong)}
-                    className="px-3 py-1.5 rounded-xl bg-brand-orange/10 text-brand-orange text-[10px] font-bold hover:bg-brand-orange/20 transition-all flex items-center gap-1.5"
-                  >
-                    {copiedType === 'all' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    전체 복사
-                  </button>
                   <button onClick={() => setSelectedSong(null)} className="p-2 rounded-full hover:bg-white/5 text-gray-400">
                     <X className="w-6 h-6" />
                   </button>
@@ -785,7 +820,14 @@ function App() {
     }
   };
 
-  const [isAppliedKeywordsExpanded, setIsAppliedKeywordsExpanded] = useState(false);
+  const [isAppliedKeywordsExpanded, setIsAppliedKeywordsExpanded] = useState(true);
+  const [isGenreRandomized, setIsGenreRandomized] = useState(false);
+  const [isMoodRandomized, setIsMoodRandomized] = useState(false);
+  const [isThemeRandomized, setIsThemeRandomized] = useState(false);
+
+  const [lyricsEnViewMode, setLyricsEnViewMode] = useState<0 | 1 | 2>(0); // 0: default, 1: expand, 2: collapse
+  const [lyricsKoViewMode, setLyricsKoViewMode] = useState<0 | 1 | 2>(0);
+  const [promptViewMode, setPromptViewMode] = useState<0 | 1 | 2>(0);
 
   const randomizeCategory = (category: 'genre' | 'mood' | 'theme') => {
     const all = category === 'genre' ? GENRES : (category === 'mood' ? MOODS : THEMES);
@@ -798,17 +840,26 @@ function App() {
       (!isGenre || !TROT_GENRES.includes(item.id))
     );
     
-    // Choose a random number of additional items (up to 3 total)
+    // Choose a random number of additional items (up to 5 total)
     const currentCount = pinned.length;
-    const maxTotal = 3;
+    const maxTotal = 5;
     const additionalCount = Math.max(1, Math.floor(Math.random() * (maxTotal - currentCount + 1)));
     const picked = [...remainingPool].sort(() => 0.5 - Math.random()).slice(0, additionalCount);
     
     const final = [...result, ...picked.map(p => p.id)];
     
-    if (category === 'genre') setSelectedGenres(final);
-    if (category === 'mood') setSelectedMoods(final);
-    if (category === 'theme') setSelectedThemes(final);
+    if (category === 'genre') {
+      setSelectedGenres(final);
+      setIsGenreRandomized(true);
+    }
+    if (category === 'mood') {
+      setSelectedMoods(final);
+      setIsMoodRandomized(true);
+    }
+    if (category === 'theme') {
+      setSelectedThemes(final);
+      setIsThemeRandomized(true);
+    }
   };
 
   const handleLogin = async () => {
@@ -872,12 +923,17 @@ function App() {
     // If pinned, don't allow unselecting unless unpinned first
     if (pinned.includes(id)) return;
 
+    // Reset randomized state when manual change occurs
+    if (category === 'genre') setIsGenreRandomized(false);
+    if (category === 'mood') setIsMoodRandomized(false);
+    if (category === 'theme') setIsThemeRandomized(false);
+
     // K-Pop Special Logic
     if (category === 'genre' && id === 'kpop') {
       const nextMode = ((kpopMode + 1) % 3) as 0 | 1 | 2;
       let canChange = true;
       
-      if (nextMode !== 0 && !state.includes(id) && state.length >= 10) {
+      if (nextMode !== 0 && !state.includes(id) && state.length >= 15) {
         canChange = false;
       }
 
@@ -906,7 +962,7 @@ function App() {
       const nextMode = ((citypopMode + 1) % 3) as 0 | 1 | 2;
       let canChange = true;
       
-      if (nextMode !== 0 && !state.includes(id) && state.length >= 10) {
+      if (nextMode !== 0 && !state.includes(id) && state.length >= 15) {
         canChange = false;
       }
 
@@ -943,7 +999,7 @@ function App() {
           setSelectedMoods(prev => prev.filter(m => !moodsToRemove.includes(m)));
         }
       }
-    } else if (state.length < 10) {
+    } else if (state.length < 15) {
       set([...state, id]);
       
       // Trot Logic: Auto-select moods
@@ -952,13 +1008,13 @@ function App() {
           const moodsToAdd = ['melancholic', 'nostalgic', 'bittersweet', 'loneliness', 'emotional', 'cinematic'];
           setSelectedMoods(prev => {
             const combined = Array.from(new Set([...prev, ...moodsToAdd]));
-            return combined.slice(0, 10);
+            return combined.slice(0, 15);
           });
         } else if (id === 'semi-trot') {
           const moodsToAdd = ['urban', 'infectious', 'groovy', 'upbeat', 'cheerful', 'bright'];
           setSelectedMoods(prev => {
             const combined = Array.from(new Set([...prev, ...moodsToAdd]));
-            return combined.slice(0, 10);
+            return combined.slice(0, 15);
           });
         }
       }
@@ -980,7 +1036,7 @@ function App() {
     } else {
       // When pinning, ensure it's also selected
       if (!selected.includes(id)) {
-        if (selected.length < 10) {
+        if (selected.length < 15) {
           setSelected([...selected, id]);
           setPinned([...pinned, id]);
         }
@@ -995,9 +1051,16 @@ function App() {
       setSelectedGenres(pinnedGenres);
       if (!pinnedGenres.includes('kpop')) setKpopMode(0);
       if (!pinnedGenres.includes('citypop')) setCitypopMode(0);
+      setIsGenreRandomized(false);
     }
-    if (category === 'mood') setSelectedMoods(pinnedMoods);
-    if (category === 'theme') setSelectedThemes(pinnedThemes);
+    if (category === 'mood') {
+      setSelectedMoods(pinnedMoods);
+      setIsMoodRandomized(false);
+    }
+    if (category === 'theme') {
+      setSelectedThemes(pinnedThemes);
+      setIsThemeRandomized(false);
+    }
   };
 
   const clearAll = () => {
@@ -1006,6 +1069,9 @@ function App() {
     if (!pinnedGenres.includes('citypop')) setCitypopMode(0);
     setSelectedMoods(pinnedMoods);
     setSelectedThemes(pinnedThemes);
+    setIsGenreRandomized(false);
+    setIsMoodRandomized(false);
+    setIsThemeRandomized(false);
     setUserInput('');
     setResult(null);
     setLyricsLength('normal');
@@ -1038,9 +1104,18 @@ function App() {
   };
 
   const unpinAll = (category: 'genre' | 'mood' | 'theme') => {
-    if (category === 'genre') setPinnedGenres([]);
-    if (category === 'mood') setPinnedMoods([]);
-    if (category === 'theme') setPinnedThemes([]);
+    if (category === 'genre') {
+      setPinnedGenres([]);
+      setIsGenreRandomized(false);
+    }
+    if (category === 'mood') {
+      setPinnedMoods([]);
+      setIsMoodRandomized(false);
+    }
+    if (category === 'theme') {
+      setPinnedThemes([]);
+      setIsThemeRandomized(false);
+    }
   };
 
   const applyRandom = () => {
@@ -1059,15 +1134,15 @@ function App() {
       return [...result, ...picked.map(p => p.id)];
     };
 
-    // Random button logic: Max 3 per category, total 5-10
-    let g = getRandomForCategory(GENRES, pinnedGenres, 3, true);
-    let m = getRandomForCategory(MOODS, pinnedMoods, 3);
-    let t = getRandomForCategory(THEMES, pinnedThemes, 3);
+    // Random button logic: Max 5 per category, total 5-15
+    let g = getRandomForCategory(GENRES, pinnedGenres, 5, true);
+    let m = getRandomForCategory(MOODS, pinnedMoods, 5);
+    let t = getRandomForCategory(THEMES, pinnedThemes, 5);
     
     let total = g.length + m.length + t.length;
     
-    // If total is not between 5 and 10, adjust
-    if (total < 5 || total > 10) {
+    // If total is not between 5 and 15, adjust
+    if (total < 5 || total > 15) {
       const allItems = [
         ...GENRES.filter(i => !g.includes(i.id)).map(i => ({ ...i, cat: 'genre' })),
         ...MOODS.filter(i => !m.includes(i.id)).map(i => ({ ...i, cat: 'mood' })),
@@ -1082,9 +1157,8 @@ function App() {
           if (p.cat === 'mood') m.push(p.id);
           if (p.cat === 'theme') t.push(p.id);
         });
-      } else if (total > 10) {
-        // This shouldn't happen with max 3 per category (3*3=9), but for safety:
-        const toRemove = total - 10;
+      } else if (total > 15) {
+        const toRemove = total - 15;
         // Logic to remove if needed
       }
     }
@@ -1092,6 +1166,10 @@ function App() {
     setSelectedGenres(g);
     setSelectedMoods(m);
     setSelectedThemes(t);
+
+    setIsGenreRandomized(true);
+    setIsMoodRandomized(true);
+    setIsThemeRandomized(true);
 
     // Random tempo logic
     if (tempoEnabled) {
@@ -1143,14 +1221,14 @@ function App() {
           randomKeywords.push(random.label);
         }
       } 
-      // If nothing selected, pick random (5-10 total)
+      // If nothing selected, pick random (5-15 total)
       else if (selectedCount === 0) {
         const allItems = [
           ...GENRES.filter(i => !TROT_GENRES.includes(i.id)).map(i => ({ ...i, cat: 'genre' })),
           ...MOODS.map(i => ({ ...i, cat: 'mood' })),
           ...THEMES.map(i => ({ ...i, cat: 'theme' }))
         ];
-        const count = Math.floor(Math.random() * 6) + 5; // 5-10
+        const count = Math.floor(Math.random() * 11) + 5; // 5-15
         const picked = allItems.sort(() => 0.5 - Math.random()).slice(0, count);
         
         picked.forEach(p => {
@@ -1343,6 +1421,7 @@ ${result.prompt}
             allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
             kpopMode={kpopMode}
             citypopMode={citypopMode}
+            isRandomized={isGenreRandomized}
           />
           <CategorySection 
             title="분위기" 
@@ -1360,6 +1439,7 @@ ${result.prompt}
             isExpanded={isMoodExpanded}
             onToggleExpand={() => setIsMoodExpanded(!isMoodExpanded)}
             allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
+            isRandomized={isMoodRandomized}
           />
           <CategorySection 
             title="주제" 
@@ -1377,6 +1457,7 @@ ${result.prompt}
             isExpanded={isThemeExpanded}
             onToggleExpand={() => setIsThemeExpanded(!isThemeExpanded)}
             allExpanded={isGenreExpanded && isMoodExpanded && isThemeExpanded}
+            isRandomized={isThemeRandomized}
           />
         </div>
 
@@ -1457,10 +1538,16 @@ ${result.prompt}
                 setIsInputFocused(true);
               }}
               onBlur={() => setIsInputFocused(false)}
-              placeholder="작곡 할 내용을 입력하세요.( 예 : 주식 떡상을 위한 기도, 화성 갈끄니까 괜찮아 )"
-              className="w-full bg-[#1b1b1e] border border-white/20 rounded-2xl py-5 pl-12 pr-6 text-white placeholder:text-[14px] md:placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all text-lg min-h-[68px] max-h-[300px] resize-none overflow-hidden"
+              className="w-full bg-[#1b1b1e] border border-white/20 rounded-2xl py-5 pl-12 pr-6 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all text-lg min-h-[68px] max-h-[300px] resize-none overflow-hidden relative"
               rows={1}
             />
+            {!userInput && !isInputFocused && (
+              <div className="absolute inset-0 pointer-events-none flex items-center pl-12 overflow-hidden">
+                <div className="animate-marquee whitespace-nowrap text-gray-500 text-[14px] md:text-lg">
+                  작곡 할 내용을 입력하세요.( 예 : 주식 떡상을 위한 기도, 화성 갈끄니까 괜찮아 ) &nbsp;&nbsp;&nbsp;&nbsp; 작곡 할 내용을 입력하세요.( 예 : 주식 떡상을 위한 기도, 화성 갈끄니까 괜찮아 )
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-row items-stretch gap-2 md:gap-4">
@@ -1520,77 +1607,7 @@ ${result.prompt}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8 pt-12 border-t border-white/5"
             >
-              {/* History Navigation & Copy All */}
-              <div className="flex flex-col md:flex-row items-center justify-between bg-transparent rounded-3xl p-4 border border-white/10 gap-4">
-                <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                  <div 
-                    className="flex items-center gap-3 px-3 py-1.5 bg-zinc-800/50 rounded-xl border border-white/10 cursor-help relative group/hist"
-                    onMouseEnter={() => setHoveredItem({ id: 'history-info', label: 'History', description: '최근 생성한 곡을 최대 5곡까지 다시 볼 수 있습니다.' })}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <History className="w-4 h-4 text-brand-orange" />
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-2">
-                    <button
-                      onClick={() => navigateHistory('prev')}
-                      disabled={historyIndex >= history.length - 1}
-                      onMouseEnter={() => setHoveredItem({ id: 'hist-prev', label: '이전 곡', description: '이전에 생성한 곡으로 이동합니다.' })}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className="p-1.5 md:p-2 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
-                    >
-                      <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-                    <span className="text-xs md:text-sm font-mono font-bold text-gray-400 min-w-[40px] md:min-w-[60px] text-center">
-                      {historyIndex + 1} / {history.length}
-                    </span>
-                    <button
-                      onClick={() => navigateHistory('next')}
-                      disabled={historyIndex <= 0}
-                      onMouseEnter={() => setHoveredItem({ id: 'hist-next', label: '다음 곡', description: '다음에 생성한 곡으로 이동합니다.' })}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className="p-1.5 md:p-2 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
-                    >
-                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleFavorite(result)}
-                      className={cn(
-                        "p-1.5 md:p-2 rounded-xl transition-all border",
-                        favorites.some(f => f.title === result.title && f.prompt === result.prompt)
-                          ? "bg-brand-orange/10 border-brand-orange/30 text-brand-orange"
-                          : "bg-transparent border-white/10 text-gray-400 hover:text-brand-orange"
-                      )}
-                    >
-                      <Heart className={cn("w-3.5 h-3.5 md:w-4 md:h-4", favorites.some(f => f.title === result.title && f.prompt === result.prompt) && "fill-current")} />
-                    </button>
-                    <button
-                      onClick={() => deleteHistoryItem(historyIndex)}
-                      onMouseEnter={() => setHoveredItem({ id: 'delete-hist', label: '현재 히스토리 삭제', description: '현재 보고 있는 히스토리 항목을 삭제합니다.' })}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className="p-1.5 md:p-2 rounded-xl bg-transparent hover:bg-red-500/10 text-white transition-all border border-white/10"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    </button>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={copyAll}
-                  onMouseEnter={() => setHoveredItem({ id: 'copy-all', label: '전체 복사', description: '키워드, 제목, 가사, 프롬프트를 한 번에 복사합니다.' })}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/20 shadow-lg shadow-brand-orange/5"
-                >
-                  {copiedType === 'all' ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    <Copy className="w-5 h-5" />
-                  )}
-                  <span className="font-bold text-xs">곡 정보 Copy all</span>
-                </button>
-              </div>
+
 
               {/* Applied Keywords After Generation */}
               <div className="bg-zinc-900/50 rounded-2xl p-3 border border-white/5">
@@ -1628,10 +1645,10 @@ ${result.prompt}
                 
                 <motion.div 
                   initial={false}
-                  animate={{ height: isAppliedKeywordsExpanded ? 'auto' : '40px' }}
+                  animate={{ height: isAppliedKeywordsExpanded ? 'auto' : '0px' }}
                   className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 overflow-hidden"
                 >
-                  {(['genre', 'mood', 'theme'] as const).map((cat) => (
+                  {isAppliedKeywordsExpanded && (['genre', 'mood', 'theme'] as const).map((cat) => (
                     <div key={cat} className="space-y-1 group/cat">
                       <div className="flex items-center justify-between">
                         <p className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter">{cat}</p>
@@ -1687,6 +1704,23 @@ ${result.prompt}
                 </motion.div>
               </div>
 
+              {/* Copy All Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={copyAll}
+                  onMouseEnter={() => setHoveredItem({ id: 'copy-all', label: '전체 복사', description: '키워드, 제목, 가사, 프롬프트를 한 번에 복사합니다.' })}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className="flex items-center gap-3 px-8 py-3 rounded-2xl bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/20 shadow-lg shadow-brand-orange/5 group"
+                >
+                  {copiedType === 'all' ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  )}
+                  <span className="font-bold text-sm">전체 복사</span>
+                </button>
+              </div>
+
               {/* Title Card */}
               <div className="bg-zinc-900 rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 flex items-center gap-2">
@@ -1704,20 +1738,42 @@ ${result.prompt}
                     <Music className="w-4 h-4" />
                     제목 (Title)
                   </div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
-                      {result.title}
-                    </h2>
+                  <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
+                    {result.title}
+                  </h2>
+
+                  {/* History Navigation & Heart Icon Below Title */}
+                  <div className="flex items-center justify-center gap-3 mt-4">
+                    <div className="flex items-center gap-2 bg-zinc-800/70 p-1.5 rounded-2xl border border-white/10 shadow-lg">
+                      <button
+                        onClick={() => navigateHistory('prev')}
+                        disabled={historyIndex >= history.length - 1}
+                        className="p-1.5 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs font-mono font-bold text-gray-400 min-w-[40px] text-center">
+                        {historyIndex + 1} / {history.length}
+                      </span>
+                      <button
+                        onClick={() => navigateHistory('next')}
+                        disabled={historyIndex <= 0}
+                        className="p-1.5 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
                     <button
                       onClick={() => toggleFavorite(result)}
-                      className="p-2 rounded-full transition-all hover:bg-white/5"
+                      className="p-2.5 rounded-2xl bg-white/10 border border-white/10 shadow-lg transition-all hover:bg-white/20 group/heart"
                     >
                       <Heart 
                         className={cn(
-                          "w-8 h-8 transition-all",
+                          "w-5 h-5 transition-all",
                           favorites.some(f => f.title === result.title && f.prompt === result.prompt)
                             ? "fill-[#FF8C00] text-[#FF8C00]"
-                            : "text-white"
+                            : "text-white group-hover/heart:text-[#FF8C00]"
                         )} 
                       />
                     </button>
@@ -1726,6 +1782,7 @@ ${result.prompt}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
                 {/* English Lyrics Section */}
                 <div className="aspect-square bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden flex flex-col group/lyrics">
                   <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
@@ -1733,16 +1790,50 @@ ${result.prompt}
                       <Music className="w-4 h-4 text-brand-orange" />
                       English Lyrics
                     </h3>
-                    <button
-                      onClick={() => copyToClipboard(result.lyrics.english, 'lyrics-en')}
-                      onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-en', label: '영어 가사 복사', description: '영어 가사 전체를 복사합니다.' })}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
-                    >
-                      {copiedType === 'lyrics-en' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
+                        <button
+                          onClick={() => setLyricsEnViewMode(2)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            lyricsEnViewMode === 2 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          접기
+                        </button>
+                        <button
+                          onClick={() => setLyricsEnViewMode(0)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            lyricsEnViewMode === 0 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          기본
+                        </button>
+                        <button
+                          onClick={() => setLyricsEnViewMode(1)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            lyricsEnViewMode === 1 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          펼치기
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(result.lyrics.english, 'lyrics-en')}
+                        onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-en', label: '영어 가사 복사', description: '영어 가사 전체를 복사합니다.' })}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                      >
+                        {copiedType === 'lyrics-en' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
+                  <div className={cn(
+                    "flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center transition-all duration-300",
+                    lyricsEnViewMode === 1 ? "min-h-[600px]" : lyricsEnViewMode === 2 ? "h-0 p-0 overflow-hidden" : "h-full"
+                  )}>
                     <div className="flex-1" />
                     <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-sm md:text-base w-full text-center">
                       {result.lyrics.english}
@@ -1758,16 +1849,50 @@ ${result.prompt}
                       <Music className="w-4 h-4 text-brand-orange" />
                       Korean Lyrics
                     </h3>
-                    <button
-                      onClick={() => copyToClipboard(result.lyrics.korean, 'lyrics-ko')}
-                      onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-ko', label: '한국어 가사 복사', description: '한국어 가사 전체를 복사합니다.' })}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
-                    >
-                      {copiedType === 'lyrics-ko' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
+                        <button
+                          onClick={() => setLyricsKoViewMode(2)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            lyricsKoViewMode === 2 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          접기
+                        </button>
+                        <button
+                          onClick={() => setLyricsKoViewMode(0)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            lyricsKoViewMode === 0 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          기본
+                        </button>
+                        <button
+                          onClick={() => setLyricsKoViewMode(1)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            lyricsKoViewMode === 1 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          펼치기
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(result.lyrics.korean, 'lyrics-ko')}
+                        onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-ko', label: '한국어 가사 복사', description: '한국어 가사 전체를 복사합니다.' })}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                      >
+                        {copiedType === 'lyrics-ko' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
+                  <div className={cn(
+                    "flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center transition-all duration-300",
+                    lyricsKoViewMode === 1 ? "min-h-[600px]" : lyricsKoViewMode === 2 ? "h-0 p-0 overflow-hidden" : "h-full"
+                  )}>
                     <div className="flex-1" />
                     <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-sm md:text-base w-full text-center">
                       {result.lyrics.korean}
@@ -1781,18 +1906,52 @@ ${result.prompt}
                   <div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-800/30">
                     <h3 className="font-bold text-white flex items-center gap-2 text-sm">
                       <Sparkles className="w-4 h-4 text-brand-orange" />
-                      음악 프롬프트 (Prompt)
+                      음악 프롬프트
                     </h3>
-                    <button
-                      onClick={() => copyToClipboard(result.prompt, 'prompt')}
-                      onMouseEnter={() => setHoveredItem({ id: 'copy-prompt', label: '프롬프트 복사', description: '음악 생성 프롬프트를 복사합니다.' })}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
-                    >
-                      {copiedType === 'prompt' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
+                        <button
+                          onClick={() => setPromptViewMode(2)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            promptViewMode === 2 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          접기
+                        </button>
+                        <button
+                          onClick={() => setPromptViewMode(0)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            promptViewMode === 0 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          기본
+                        </button>
+                        <button
+                          onClick={() => setPromptViewMode(1)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
+                            promptViewMode === 1 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
+                          )}
+                        >
+                          펼치기
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(result.prompt, 'prompt')}
+                        onMouseEnter={() => setHoveredItem({ id: 'copy-prompt', label: '프롬프트 복사', description: '음악 생성 프롬프트를 복사합니다.' })}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                      >
+                        {copiedType === 'prompt' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-8 flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+                  <div className={cn(
+                    "p-8 flex-1 overflow-y-auto custom-scrollbar flex flex-col transition-all duration-300",
+                    promptViewMode === 1 ? "min-h-[600px]" : promptViewMode === 2 ? "h-0 p-0 overflow-hidden" : "h-full"
+                  )}>
                     <div className="flex-1" />
                     <div className="bg-black/30 rounded-2xl p-6 border border-white/5">
                       <p className="text-gray-400 leading-relaxed text-sm font-mono">
@@ -1897,6 +2056,7 @@ interface CategorySectionProps {
   allExpanded: boolean;
   kpopMode?: 0 | 1 | 2;
   citypopMode?: 0 | 1 | 2;
+  isRandomized?: boolean;
 }
 
 function CategorySection({ 
@@ -1916,7 +2076,8 @@ function CategorySection({
   onToggleExpand,
   allExpanded,
   kpopMode = 0,
-  citypopMode = 0
+  citypopMode = 0,
+  isRandomized = false
 }: CategorySectionProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
 
@@ -1931,7 +2092,7 @@ function CategorySection({
           >
             <span className="w-1.5 h-6 bg-brand-orange rounded-full" />
             {title}
-            <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/10)</span>
+            <span className="text-[14px] font-normal text-gray-500 ml-2">({selected.length}/15)</span>
           </h3>
           <AnimatePresence>
             {showTitleTooltip && (
@@ -1951,7 +2112,12 @@ function CategorySection({
             onClick={onRandom}
             onMouseEnter={() => onHover({ id: 'random-cat', label: '랜덤 선택', description: `${title} 키워드를 무작위로 선택합니다.` })}
             onMouseLeave={() => onHover(null)}
-            className="p-2 rounded-lg bg-white/5 hover:bg-brand-orange/20 text-gray-500 hover:text-brand-orange transition-all"
+            className={cn(
+              "p-2 rounded-lg transition-all",
+              isRandomized 
+                ? "bg-brand-orange/20 text-brand-orange shadow-lg shadow-brand-orange/10" 
+                : "bg-white/5 hover:bg-brand-orange/20 text-gray-500 hover:text-brand-orange"
+            )}
           >
             <Dices className="w-4 h-4" />
           </button>
@@ -2406,8 +2572,8 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
     <div className={cn(
       "bg-zinc-900/40 rounded-3xl px-6 py-4 border border-white/5 transition-all"
     )}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="relative flex items-center gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+        <div className="relative flex items-center justify-center md:justify-start gap-3">
           <h3 
             onMouseEnter={() => setShowTitleTooltip(true)}
             onMouseLeave={() => setShowTitleTooltip(false)}
@@ -2426,7 +2592,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             )}
           >
             <Sparkles className={cn("w-3.5 h-3.5", enabled && "animate-pulse")} />
-            랜덤
+            <span className="md:inline hidden">랜덤</span>
           </button>
           <AnimatePresence>
             {showTitleTooltip && (
