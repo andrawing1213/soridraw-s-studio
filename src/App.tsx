@@ -260,7 +260,6 @@ export default function AppWrapper() {
 
 function Navigation({ user, handleLogin, handleLogout }: { user: User | null; handleLogin: () => void; handleLogout: () => void }) {
   const [isLeftOpen, setIsLeftOpen] = useState(false);
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -269,6 +268,10 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
   };
 
   const handleHomeClick = () => {
+    if (!user) {
+      handleLogin();
+      return;
+    }
     if (location.pathname === '/') {
       scrollToTop();
     } else {
@@ -278,6 +281,10 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
   };
 
   const handleHistoryClick = () => {
+    if (!user) {
+      handleLogin();
+      return;
+    }
     if (location.pathname === '/history') {
       scrollToTop();
     } else {
@@ -286,26 +293,74 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
     setIsLeftOpen(false);
   };
 
+  const handleSunoClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      handleLogin();
+    }
+  };
+
   return (
     <>
+      {/* Backdrop for Menu */}
+      <AnimatePresence>
+        {isLeftOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsLeftOpen(false)}
+            className="fixed inset-0 z-40 bg-black/5 backdrop-blur-[1px]"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Left Menu - Hamburger & Suno */}
-      <div className="fixed top-6 left-4 md:left-[calc((100vw-1152px)/2+24px)] z-50 flex flex-col gap-4">
+      <div className="fixed top-6 left-4 md:left-[calc((100vw-1152px)/2+12px)] z-50 flex items-center gap-3">
+        <button 
+          onClick={handleHomeClick}
+          className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+        >
+          <HomeIcon className="w-5 h-5" />
+        </button>
         <div className="relative">
           <button 
-            onClick={() => setIsLeftOpen(!isLeftOpen)}
-            className="p-3 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
+            onClick={() => {
+              if (!user) {
+                handleLogin();
+              } else {
+                setIsLeftOpen(!isLeftOpen);
+              }
+            }}
+            className="p-2.5 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-md text-white shadow-xl hover:bg-zinc-800 transition-all"
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5" />
           </button>
 
           <AnimatePresence>
             {isLeftOpen && (
               <motion.div
-                initial={{ opacity: 0, x: -10, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -10, scale: 0.95 }}
-                className="absolute top-0 left-full ml-3 w-36 py-1 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden"
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute top-full left-0 mt-3 w-36 py-2 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden flex flex-col"
               >
+                {user && (
+                  <div className="px-4 py-3 mb-1 border-bottom border-white/5 flex flex-col items-center gap-2">
+                    <div className="relative overflow-hidden rounded-full border border-brand-orange/30 shadow-lg">
+                      <img 
+                        src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
+                        alt="Profile" 
+                        className="w-10 h-10 object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-medium truncate w-full text-center">
+                      {user.displayName || 'User'}
+                    </span>
+                  </div>
+                )}
+                
                 <button 
                   onClick={handleHomeClick}
                   className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left"
@@ -336,71 +391,42 @@ function Navigation({ user, handleLogin, handleLogout }: { user: User | null; ha
           </AnimatePresence>
         </div>
 
-        {/* Suno Icon */}
-        <a 
-          href="https://suno.com/create" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/20 hover:scale-110 transition-all flex items-center justify-center border-2 border-white/20"
-          title="Suno Create"
-        >
-          <span className="text-[10px] font-black text-white tracking-tighter">SUNO</span>
-        </a>
+        {!user && (
+          <a 
+            href="https://suno.com/create" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            onClick={handleSunoClick}
+            className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/20 hover:scale-110 transition-all flex items-center justify-center border-2 border-white/20"
+            title="Suno Create"
+          >
+            <span className="text-[9px] font-black text-white tracking-tighter">SUNO</span>
+          </a>
+        )}
       </div>
 
-      {/* Right Menu - Profile / Login (Only on Home Page) */}
+      {/* Right Menu - Login or Suno (Only on Home Page) */}
       {location.pathname === '/' && (
-        <div className="fixed top-6 right-4 md:right-[calc((100vw-1152px)/2+24px)] z-50">
-          {user ? (
-            <div className="relative">
-              <button 
-                onClick={() => setIsLogoutOpen(!isLogoutOpen)}
-                className="relative overflow-hidden rounded-full border-2 border-brand-orange/50 hover:border-brand-orange transition-all shadow-xl"
-              >
-                <img 
-                  src={user.photoURL || 'https://picsum.photos/seed/user/100/100'} 
-                  alt="Profile" 
-                  className="w-10 h-10 object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </button>
-
-              <AnimatePresence>
-                {isLogoutOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full right-0 mt-2 w-32 py-1 bg-zinc-900/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden"
-                  >
-                    <button 
-                      onClick={() => navigate('/history')}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left"
-                    >
-                      <HeartIcon className="w-3.5 h-3.5" />
-                      내 보관함
-                    </button>
-                    <button 
-                      onClick={() => {
-                        handleLogout();
-                        setIsLogoutOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-[11px] font-bold text-brand-orange hover:text-white hover:bg-white/5 transition-colors text-left border-t border-white/5"
-                    >
-                      로그아웃
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
+        <div className="fixed top-6 right-4 md:right-[calc((100vw-1152px)/2+12px)] z-50">
+          {!user ? (
             <button 
               onClick={handleLogin}
-              className="px-5 py-2.5 rounded-2xl bg-brand-orange text-white text-[12px] font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
+              className="px-4 py-2 rounded-2xl bg-brand-orange text-white text-[11px] font-bold shadow-lg shadow-brand-orange/20 hover:brightness-110 transition-all flex items-center gap-2"
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-3.5 h-3.5" />
               Login
             </button>
+          ) : (
+            <a 
+              href="https://suno.com/create" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={handleSunoClick}
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/20 hover:scale-110 transition-all flex items-center justify-center border-2 border-white/20"
+              title="Suno Create"
+            >
+              <span className="text-[9px] font-black text-white tracking-tighter">SUNO</span>
+            </a>
           )}
         </div>
       )}
@@ -474,7 +500,6 @@ ${song.prompt}
         >
           <Music className="w-10 h-10 text-brand-orange group-hover:scale-110 transition-transform" />
         </button>
-        <h1 className="text-3xl font-bold text-white mb-2">내 보관함</h1>
         <p className="text-gray-500 text-[10px] md:text-xs whitespace-nowrap">내가 하트 누른 곡들을 모아보세요.</p>
       </div>
 
@@ -758,6 +783,32 @@ function App() {
     } catch (error) {
       handleFirestoreError(error, existingFav ? OperationType.DELETE : OperationType.CREATE, 'favorites');
     }
+  };
+
+  const [isAppliedKeywordsExpanded, setIsAppliedKeywordsExpanded] = useState(false);
+
+  const randomizeCategory = (category: 'genre' | 'mood' | 'theme') => {
+    const all = category === 'genre' ? GENRES : (category === 'mood' ? MOODS : THEMES);
+    const pinned = category === 'genre' ? pinnedGenres : (category === 'mood' ? pinnedMoods : pinnedThemes);
+    const isGenre = category === 'genre';
+    
+    const result = [...pinned];
+    const remainingPool = all.filter(item => 
+      !pinned.includes(item.id) && 
+      (!isGenre || !TROT_GENRES.includes(item.id))
+    );
+    
+    // Choose a random number of additional items (up to 3 total)
+    const currentCount = pinned.length;
+    const maxTotal = 3;
+    const additionalCount = Math.max(1, Math.floor(Math.random() * (maxTotal - currentCount + 1)));
+    const picked = [...remainingPool].sort(() => 0.5 - Math.random()).slice(0, additionalCount);
+    
+    const final = [...result, ...picked.map(p => p.id)];
+    
+    if (category === 'genre') setSelectedGenres(final);
+    if (category === 'mood') setSelectedMoods(final);
+    if (category === 'theme') setSelectedThemes(final);
   };
 
   const handleLogin = async () => {
@@ -1284,6 +1335,7 @@ ${result.prompt}
             onTogglePin={(id) => togglePin(id, 'genre')}
             onClear={() => clearCategory('genre')}
             onUnpinAll={() => unpinAll('genre')}
+            onRandom={() => randomizeCategory('genre')}
             onHover={setHoveredItem}
             hoveredItem={hoveredItem}
             isExpanded={isGenreExpanded}
@@ -1302,6 +1354,7 @@ ${result.prompt}
             onTogglePin={(id) => togglePin(id, 'mood')}
             onClear={() => clearCategory('mood')}
             onUnpinAll={() => unpinAll('mood')}
+            onRandom={() => randomizeCategory('mood')}
             onHover={setHoveredItem}
             hoveredItem={hoveredItem}
             isExpanded={isMoodExpanded}
@@ -1318,6 +1371,7 @@ ${result.prompt}
             onTogglePin={(id) => togglePin(id, 'theme')}
             onClear={() => clearCategory('theme')}
             onUnpinAll={() => unpinAll('theme')}
+            onRandom={() => randomizeCategory('theme')}
             onHover={setHoveredItem}
             hoveredItem={hoveredItem}
             isExpanded={isThemeExpanded}
@@ -1403,8 +1457,8 @@ ${result.prompt}
                 setIsInputFocused(true);
               }}
               onBlur={() => setIsInputFocused(false)}
-              placeholder="당신의 이야기를 음악으로 만들어보세요. (예: 비 오는 날 창밖을 보며 느끼는 그리움, 늦은 밤 떠오르는 한 사람)"
-              className="w-full bg-[#1b1b1e] border border-white/20 rounded-2xl py-5 pl-12 pr-6 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all text-lg min-h-[68px] max-h-[300px] resize-none overflow-hidden"
+              placeholder="작곡 할 내용을 입력하세요.( 예 : 주식 떡상을 위한 기도, 화성 갈끄니까 괜찮아 )"
+              className="w-full bg-[#1b1b1e] border border-white/20 rounded-2xl py-5 pl-12 pr-6 text-white placeholder:text-[14px] md:placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all text-lg min-h-[68px] max-h-[300px] resize-none overflow-hidden"
               rows={1}
             />
           </div>
@@ -1468,26 +1522,25 @@ ${result.prompt}
             >
               {/* History Navigation & Copy All */}
               <div className="flex flex-col md:flex-row items-center justify-between bg-transparent rounded-3xl p-4 border border-white/10 gap-4">
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2 md:gap-4">
                   <div 
                     className="flex items-center gap-3 px-3 py-1.5 bg-zinc-800/50 rounded-xl border border-white/10 cursor-help relative group/hist"
                     onMouseEnter={() => setHoveredItem({ id: 'history-info', label: 'History', description: '최근 생성한 곡을 최대 5곡까지 다시 볼 수 있습니다.' })}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
                     <History className="w-4 h-4 text-brand-orange" />
-                    <span className="text-xs font-bold text-gray-300">History</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 md:gap-2">
                     <button
                       onClick={() => navigateHistory('prev')}
                       disabled={historyIndex >= history.length - 1}
                       onMouseEnter={() => setHoveredItem({ id: 'hist-prev', label: '이전 곡', description: '이전에 생성한 곡으로 이동합니다.' })}
                       onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
+                      className="p-1.5 md:p-2 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
                     >
-                      <ArrowLeft className="w-5 h-5" />
+                      <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
-                    <span className="text-sm font-mono font-bold text-gray-400 min-w-[60px] text-center">
+                    <span className="text-xs md:text-sm font-mono font-bold text-gray-400 min-w-[40px] md:min-w-[60px] text-center">
                       {historyIndex + 1} / {history.length}
                     </span>
                     <button
@@ -1495,9 +1548,9 @@ ${result.prompt}
                       disabled={historyIndex <= 0}
                       onMouseEnter={() => setHoveredItem({ id: 'hist-next', label: '다음 곡', description: '다음에 생성한 곡으로 이동합니다.' })}
                       onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
+                      className="p-1.5 md:p-2 rounded-xl hover:bg-white/5 text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
                     >
-                      <ArrowRight className="w-5 h-5" />
+                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                   </div>
                   
@@ -1505,21 +1558,21 @@ ${result.prompt}
                     <button
                       onClick={() => toggleFavorite(result)}
                       className={cn(
-                        "p-2 rounded-xl transition-all border",
+                        "p-1.5 md:p-2 rounded-xl transition-all border",
                         favorites.some(f => f.title === result.title && f.prompt === result.prompt)
                           ? "bg-brand-orange/10 border-brand-orange/30 text-brand-orange"
                           : "bg-transparent border-white/10 text-gray-400 hover:text-brand-orange"
                       )}
                     >
-                      <Heart className={cn("w-4 h-4", favorites.some(f => f.title === result.title && f.prompt === result.prompt) && "fill-current")} />
+                      <Heart className={cn("w-3.5 h-3.5 md:w-4 md:h-4", favorites.some(f => f.title === result.title && f.prompt === result.prompt) && "fill-current")} />
                     </button>
                     <button
                       onClick={() => deleteHistoryItem(historyIndex)}
                       onMouseEnter={() => setHoveredItem({ id: 'delete-hist', label: '현재 히스토리 삭제', description: '현재 보고 있는 히스토리 항목을 삭제합니다.' })}
                       onMouseLeave={() => setHoveredItem(null)}
-                      className="p-2 rounded-xl bg-transparent hover:bg-red-500/10 text-white transition-all border border-white/10"
+                      className="p-1.5 md:p-2 rounded-xl bg-transparent hover:bg-red-500/10 text-white transition-all border border-white/10"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     </button>
                   </div>
                 </div>
@@ -1544,27 +1597,40 @@ ${result.prompt}
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                     <Check className="w-3 h-3 text-brand-orange" />
-                    적용된 키워드 (Applied Keywords)
+                    적용된 키워드
                   </h3>
-                  <button
-                    onClick={() => {
-                      const kwText = [
-                        `[Genres] ${result.appliedKeywords.genre.join(', ')}`,
-                        `[Moods] ${result.appliedKeywords.mood.join(', ')}`,
-                        `[Themes] ${result.appliedKeywords.theme.join(', ')}`,
-                        result.appliedKeywords.tempo ? `[Tempo] ${result.appliedKeywords.tempo}` : ''
-                      ].filter(Boolean).join('\n');
-                      copyToClipboard(kwText, 'keywords');
-                    }}
-                    onMouseEnter={() => setHoveredItem({ id: 'copy-keywords', label: '키워드 복사', description: '적용된 모든 키워드를 복사합니다.' })}
-                    onMouseLeave={() => setHoveredItem(null)}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
-                  >
-                    {copiedType === 'keywords' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsAppliedKeywordsExpanded(!isAppliedKeywordsExpanded)}
+                      className="flex items-center gap-1 px-3 py-1 rounded-full bg-transparent hover:bg-brand-orange/10 text-brand-orange transition-all border border-brand-orange/30 text-[10px] font-bold"
+                    >
+                      {isAppliedKeywordsExpanded ? '접기' : '펼쳐보기'}
+                      {isAppliedKeywordsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const kwText = [
+                          `[Genres] ${result.appliedKeywords.genre.join(', ')}`,
+                          `[Moods] ${result.appliedKeywords.mood.join(', ')}`,
+                          `[Themes] ${result.appliedKeywords.theme.join(', ')}`,
+                          result.appliedKeywords.tempo ? `[Tempo] ${result.appliedKeywords.tempo}` : ''
+                        ].filter(Boolean).join('\n');
+                        copyToClipboard(kwText, 'keywords');
+                      }}
+                      onMouseEnter={() => setHoveredItem({ id: 'copy-keywords', label: '키워드 복사', description: '적용된 모든 키워드를 복사합니다.' })}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                    >
+                      {copiedType === 'keywords' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <motion.div 
+                  initial={false}
+                  animate={{ height: isAppliedKeywordsExpanded ? 'auto' : '40px' }}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 overflow-hidden"
+                >
                   {(['genre', 'mood', 'theme'] as const).map((cat) => (
                     <div key={cat} className="space-y-1 group/cat">
                       <div className="flex items-center justify-between">
@@ -1618,7 +1684,7 @@ ${result.prompt}
                       </div>
                     </div>
                   )}
-                </div>
+                </motion.div>
               </div>
 
               {/* Title Card */}
@@ -1823,6 +1889,7 @@ interface CategorySectionProps {
   onTogglePin: (id: string) => void;
   onClear: () => void;
   onUnpinAll: () => void;
+  onRandom: () => void;
   onHover: (item: CategoryItem | null) => void;
   hoveredItem: CategoryItem | null;
   isExpanded: boolean;
@@ -1842,6 +1909,7 @@ function CategorySection({
   onTogglePin,
   onClear, 
   onUnpinAll,
+  onRandom,
   onHover,
   hoveredItem,
   isExpanded,
@@ -1880,6 +1948,14 @@ function CategorySection({
         </div>
         <div className="flex items-center gap-2">
           <button 
+            onClick={onRandom}
+            onMouseEnter={() => onHover({ id: 'random-cat', label: '랜덤 선택', description: `${title} 키워드를 무작위로 선택합니다.` })}
+            onMouseLeave={() => onHover(null)}
+            className="p-2 rounded-lg bg-white/5 hover:bg-brand-orange/20 text-gray-500 hover:text-brand-orange transition-all"
+          >
+            <Dices className="w-4 h-4" />
+          </button>
+          <button 
             onClick={onUnpinAll}
             title="Unpin All"
             className="p-2 rounded-lg bg-white/5 hover:bg-brand-orange/20 text-gray-500 hover:text-brand-orange transition-all"
@@ -1899,7 +1975,7 @@ function CategorySection({
       
       <div className={cn(
         "flex flex-wrap gap-2 transition-all duration-500",
-        !isExpanded ? "max-h-[84px] overflow-hidden" : "max-h-[1000px] overflow-visible"
+        !isExpanded ? "max-h-[40px] md:max-h-[84px] overflow-hidden" : "max-h-[1000px] overflow-visible"
       )}>
         {items.map((item) => {
           const isPinned = pinned.includes(item.id);
@@ -2011,7 +2087,7 @@ function CategorySection({
       )}>
         <button
           onClick={onToggleExpand}
-          className="flex items-center gap-2 px-6 py-2 rounded-full bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange transition-all border border-brand-orange/30 hover:border-brand-orange/50 group/expand shadow-lg shadow-brand-orange/5"
+          className="flex items-center gap-2 px-6 py-2 rounded-full bg-transparent hover:bg-brand-orange/10 text-brand-orange transition-all border border-brand-orange/30 hover:border-brand-orange/50 group/expand shadow-lg shadow-brand-orange/5"
         >
           <span className="text-[12px] font-bold uppercase tracking-widest">{isExpanded ? '접기' : '펼쳐보기'}</span>
           {isExpanded ? (
