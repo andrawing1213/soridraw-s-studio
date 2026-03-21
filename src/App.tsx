@@ -531,7 +531,7 @@ ${song.prompt}
         >
           <Music className="w-10 h-10 text-brand-orange group-hover:scale-110 transition-transform" />
         </button>
-        <p className="text-gray-500 text-[10px] md:text-xs whitespace-nowrap">내가 하트 누른 곡들을 모아보세요.</p>
+        <p className="text-gray-500 text-[18px] md:text-[21px] whitespace-nowrap">내가 하트 누른 곡들을 모아보세요.</p>
       </div>
 
       {/* Search Bar */}
@@ -738,8 +738,8 @@ function App() {
   const [isMoodExpanded, setIsMoodExpanded] = useState(false);
   const [isThemeExpanded, setIsThemeExpanded] = useState(false);
   const [tempoEnabled, setTempoEnabled] = useState(true);
-  const [minBPM, setMinBPM] = useState(70);
-  const [maxBPM, setMaxBPM] = useState(90);
+  const [minBPM, setMinBPM] = useState(90);
+  const [maxBPM, setMaxBPM] = useState(110);
   const [userInput, setUserInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<SongResult | null>(null);
@@ -824,10 +824,6 @@ function App() {
   const [isGenreRandomized, setIsGenreRandomized] = useState(false);
   const [isMoodRandomized, setIsMoodRandomized] = useState(false);
   const [isThemeRandomized, setIsThemeRandomized] = useState(false);
-
-  const [lyricsEnViewMode, setLyricsEnViewMode] = useState<0 | 1 | 2>(0); // 0: default, 1: expand, 2: collapse
-  const [lyricsKoViewMode, setLyricsKoViewMode] = useState<0 | 1 | 2>(0);
-  const [promptViewMode, setPromptViewMode] = useState<0 | 1 | 2>(0);
 
   const randomizeCategory = (category: 'genre' | 'mood' | 'theme') => {
     const all = category === 'genre' ? GENRES : (category === 'mood' ? MOODS : THEMES);
@@ -1791,35 +1787,6 @@ ${result.prompt}
                       English Lyrics
                     </h3>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                        <button
-                          onClick={() => setLyricsEnViewMode(2)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            lyricsEnViewMode === 2 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          접기
-                        </button>
-                        <button
-                          onClick={() => setLyricsEnViewMode(0)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            lyricsEnViewMode === 0 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          기본
-                        </button>
-                        <button
-                          onClick={() => setLyricsEnViewMode(1)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            lyricsEnViewMode === 1 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          펼치기
-                        </button>
-                      </div>
                       <button
                         onClick={() => copyToClipboard(result.lyrics.english, 'lyrics-en')}
                         onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-en', label: '영어 가사 복사', description: '영어 가사 전체를 복사합니다.' })}
@@ -1830,10 +1797,7 @@ ${result.prompt}
                       </button>
                     </div>
                   </div>
-                  <div className={cn(
-                    "flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center transition-all duration-300",
-                    lyricsEnViewMode === 1 ? "min-h-[600px]" : lyricsEnViewMode === 2 ? "h-0 p-0 overflow-hidden" : "h-full"
-                  )}>
+                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center h-full">
                     <div className="flex-1" />
                     <pre className="whitespace-pre-wrap font-sans text-gray-300 leading-relaxed text-sm md:text-base w-full text-center">
                       {result.lyrics.english}
@@ -1850,35 +1814,6 @@ ${result.prompt}
                       Korean Lyrics
                     </h3>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                        <button
-                          onClick={() => setLyricsKoViewMode(2)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            lyricsKoViewMode === 2 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          접기
-                        </button>
-                        <button
-                          onClick={() => setLyricsKoViewMode(0)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            lyricsKoViewMode === 0 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          기본
-                        </button>
-                        <button
-                          onClick={() => setLyricsKoViewMode(1)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            lyricsKoViewMode === 1 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          펼치기
-                        </button>
-                      </div>
                       <button
                         onClick={() => copyToClipboard(result.lyrics.korean, 'lyrics-ko')}
                         onMouseEnter={() => setHoveredItem({ id: 'copy-lyrics-ko', label: '한국어 가사 복사', description: '한국어 가사 전체를 복사합니다.' })}
@@ -1889,10 +1824,7 @@ ${result.prompt}
                       </button>
                     </div>
                   </div>
-                  <div className={cn(
-                    "flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center transition-all duration-300",
-                    lyricsKoViewMode === 1 ? "min-h-[600px]" : lyricsKoViewMode === 2 ? "h-0 p-0 overflow-hidden" : "h-full"
-                  )}>
+                  <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center h-full">
                     <div className="flex-1" />
                     <pre className="whitespace-pre-wrap font-sans text-gray-400 leading-relaxed text-sm md:text-base w-full text-center">
                       {result.lyrics.korean}
@@ -1909,35 +1841,6 @@ ${result.prompt}
                       음악 프롬프트
                     </h3>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                        <button
-                          onClick={() => setPromptViewMode(2)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            promptViewMode === 2 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          접기
-                        </button>
-                        <button
-                          onClick={() => setPromptViewMode(0)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            promptViewMode === 0 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          기본
-                        </button>
-                        <button
-                          onClick={() => setPromptViewMode(1)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all",
-                            promptViewMode === 1 ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "text-gray-500 hover:text-gray-300"
-                          )}
-                        >
-                          펼치기
-                        </button>
-                      </div>
                       <button
                         onClick={() => copyToClipboard(result.prompt, 'prompt')}
                         onMouseEnter={() => setHoveredItem({ id: 'copy-prompt', label: '프롬프트 복사', description: '음악 생성 프롬프트를 복사합니다.' })}
@@ -1948,10 +1851,7 @@ ${result.prompt}
                       </button>
                     </div>
                   </div>
-                  <div className={cn(
-                    "p-8 flex-1 overflow-y-auto custom-scrollbar flex flex-col transition-all duration-300",
-                    promptViewMode === 1 ? "min-h-[600px]" : promptViewMode === 2 ? "h-0 p-0 overflow-hidden" : "h-full"
-                  )}>
+                  <div className="p-8 flex-1 overflow-y-auto custom-scrollbar flex flex-col h-full">
                     <div className="flex-1" />
                     <div className="bg-black/30 rounded-2xl p-6 border border-white/5">
                       <p className="text-gray-400 leading-relaxed text-sm font-mono">
@@ -2649,7 +2549,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
 
       <div className={cn(
         "px-4 py-2 transition-opacity",
-        enabled && "opacity-30 pointer-events-none"
+        enabled && "opacity-50 pointer-events-none"
       )}>
         <div 
           ref={sliderRef}
@@ -2673,7 +2573,7 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
           <div 
             className={cn(
               "absolute h-full rounded-full transition-colors",
-              !enabled ? (isValid ? "bg-brand-orange" : "bg-zinc-600") : "bg-zinc-700"
+              !enabled ? (isValid ? "bg-brand-orange" : "bg-zinc-600") : "bg-brand-orange/40"
             )}
             style={{ left: `${minPos}%`, width: `${maxPos - minPos}%` }}
           />
@@ -2684,12 +2584,14 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             onTouchStart={(e) => { e.stopPropagation(); handleStart('min'); }}
             className={cn(
               "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none z-20",
-              !enabled ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
+              !enabled 
+                ? "bg-zinc-900 border-cyan-500 shadow-lg shadow-cyan-500/20 scale-110" 
+                : "bg-zinc-900 border-cyan-500/40 shadow-lg shadow-cyan-500/10 scale-100 cursor-not-allowed",
               isDragging === 'min' && "scale-125 border-cyan-400"
             )}
             style={{ left: `${minPos}%` }}
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+            <div className={cn("w-1.5 h-1.5 rounded-full", !enabled ? "bg-cyan-500" : "bg-cyan-500/50")} />
           </div>
 
           {/* Max Handle */}
@@ -2698,12 +2600,14 @@ function TempoControl({ enabled, onEnabledChange, min, max, onMinChange, onMaxCh
             onTouchStart={(e) => { e.stopPropagation(); handleStart('max'); }}
             className={cn(
               "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-grab active:cursor-grabbing touch-none z-20",
-              !enabled ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" : "bg-zinc-800 border-zinc-700 cursor-not-allowed",
+              !enabled 
+                ? "bg-zinc-900 border-rose-500 shadow-lg shadow-rose-500/20 scale-110" 
+                : "bg-zinc-900 border-rose-500/40 shadow-lg shadow-rose-500/10 scale-100 cursor-not-allowed",
               isDragging === 'max' && "scale-125 border-rose-400"
             )}
             style={{ left: `${maxPos}%` }}
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+            <div className={cn("w-1.5 h-1.5 rounded-full", !enabled ? "bg-rose-500" : "bg-rose-500/50")} />
           </div>
         </div>
         

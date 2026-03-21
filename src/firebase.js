@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB_XyRUffNmJ5iugtvqx_3yY-rLi6PaumA",
+  apiKey: "AIzaSyDovLKo3djdRbs963vqKdbj-geRWyzMTrg", // 히도 님의 새 API 키
   authDomain: "soridraw-app-866a5.firebaseapp.com",
   projectId: "soridraw-app-866a5",
   storageBucket: "soridraw-app-866a5.firebasestorage.app",
